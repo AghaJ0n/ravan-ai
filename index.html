@@ -30,7 +30,8 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#6f758a;line-height:1.9}
     const bin=atob(window.__RAVAN_B64||"");
     const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-    const html=await new Response(stream).text();
+    let html=await new Response(stream).text();
+    html=html.replace('</body>','<script src="ravan-dynamic-v13.js?v=13.0"><\/script></body>');
     document.open(); document.write(html); document.close();
   } catch(e) {
     document.getElementById("boot").innerHTML="<div><h1>RAVAN AI</h1><p>مرورگر نتوانست برنامه را بارگذاری کند. لطفاً از نسخه جدید Chrome یا Edge استفاده کنید.</p></div>";
