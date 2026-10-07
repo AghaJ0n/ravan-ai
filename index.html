@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RAVAN AI — روان</title>
+<meta name="description" content="میزکار هوشمند فارسی برای ساخت پرامپت و فرایندهای کاری بر اساس نقش، نوع کار و ابزار هوش مصنوعی.">
+<style>
+html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;background:#f5f6fb;color:#20253a}
+#boot{height:100%;display:grid;place-items:center;text-align:center;padding:24px;box-sizing:border-box}
+#boot>div{background:#fff;border:1px solid #e2e5ef;border-radius:20px;padding:28px 32px;box-shadow:0 18px 55px rgba(45,43,84,.12);max-width:560px}
+h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#6f758a;line-height:1.9}
+</style>
+</head>
+<body>
+<div id="boot"><div><h1>RAVAN AI</h1><p>در حال آماده‌سازی میزکار هوشمند…</p></div></div>
+<script src="payload-1.js"></script>
+<script src="payload-2.js"></script>
+<script src="payload-3.js"></script>
+<script src="payload-4.js"></script>
+<script src="payload-5.js"></script>
+<script src="payload-6.js"></script>
+<script src="payload-7.js"></script>
+<script>
+(async()=>{
+  try {
+    const bin=atob(window.__RAVAN_B64||"");
+    const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    const html=await new Response(stream).text();
+    document.open(); document.write(html); document.close();
+  } catch(e) {
+    document.getElementById("boot").innerHTML="<div><h1>RAVAN AI</h1><p>مرورگر نتوانست برنامه را بارگذاری کند. لطفاً از نسخه جدید Chrome یا Edge استفاده کنید.</p></div>";
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
