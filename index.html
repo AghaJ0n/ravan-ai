@@ -31,8 +31,22 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
     const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
     let html=await new Response(stream).text();
-    const styles='<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.10"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.10"><link rel="stylesheet" href="ravan-components-v19.css?v=19.10">';
-    const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.10"><\/script><script src="ravan-ui-v19.js?v=19.10"><\/script><script src="ravan-a11y-v19.js?v=19.10"><\/script>';
+
+    /* Preserve the exact legacy workspace markup before the document is
+       rewritten. A malformed legacy inline block can prevent this late DOM
+       section from materializing in some browsers, while its JS functions
+       still load. The bridge can restore this original markup verbatim. */
+    const wsId=html.indexOf('id="r11Workspace"');
+    if(wsId>=0){
+      const wsStart=html.lastIndexOf('<div',wsId);
+      const wsEnd=html.indexOf('<script',wsId);
+      window.__RAVAN_WORKSPACE_HTML=(wsStart>=0&&wsEnd>wsStart)?html.slice(wsStart,wsEnd).trim():'';
+    }else{
+      window.__RAVAN_WORKSPACE_HTML='';
+    }
+
+    const styles='<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.11"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.11"><link rel="stylesheet" href="ravan-components-v19.css?v=19.11">';
+    const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.11"><\/script><script src="ravan-ui-v19.js?v=19.11"><\/script><script src="ravan-a11y-v19.js?v=19.11"><\/script>';
     html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
     document.open(); document.write(html); document.close();
   } catch(e) {
