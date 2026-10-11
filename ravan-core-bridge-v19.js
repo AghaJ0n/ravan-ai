@@ -1,18 +1,20 @@
-/* RAVAN AI v19 — targeted Core workspace bridge */
+/* RAVAN AI v19.7 — preserve the real Core workspace parent across UI mount */
 (()=>{
 'use strict';
-const workspace=document.querySelector('.r11-ws-shell');
+
+/* Core buildWs() toggles the `open` class on #r11Workspace itself and keeps
+   references to many descendants. Preserve that exact parent node — not only
+   .r11-ws-shell — while the consolidated UI rebuilds <body>. */
+const workspace=document.getElementById('r11Workspace')||document.querySelector('.r11-workspace');
 if(!workspace||workspace.dataset.r19CoreBridge)return;
 workspace.dataset.r19CoreBridge='1';
-
-/* The consolidated UI rebuilds <body>. Keep only the real Core workspace
-   node alive so its direct event listeners/state survive that rebuild. */
 workspace.remove();
 
 function attach(){
   const main=document.querySelector('.r19-main');
   if(!main)return false;
   if(!workspace.isConnected)main.appendChild(workspace);
+  document.documentElement.dataset.ravanWorkspaceBridge='ready';
   return true;
 }
 
