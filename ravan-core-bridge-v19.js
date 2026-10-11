@@ -1,4 +1,4 @@
-/* RAVAN AI v19.10 — deterministic Core workspace preservation */
+/* RAVAN AI v19.11 — restore and preserve the Core workspace */
 (()=>{
 'use strict';
 
@@ -17,20 +17,28 @@ if(!window.__RAVAN_INSERTBEFORE_FIX__){
     return nativeInsertBefore.call(this,newNode,refNode);
   };
 }
-document.documentElement.dataset.ravanBridgeLoaded='19.10';
+document.documentElement.dataset.ravanBridgeLoaded='19.11';
 
-/* Core buildWs() owns this exact parent and its descendants. Keep references
-   alive while v19 rebuilds body, then deterministically restore the full tree. */
-const workspace=document.getElementById('r11Workspace')||document.querySelector('.r11-workspace');
+/* In the legacy payload, an old malformed inline block can leave the workspace
+   markup unmaterialized even though r11Move/buildWs are available. index.html
+   preserves the exact source fragment so we can restore that original DOM. */
+let workspace=document.getElementById('r11Workspace')||document.querySelector('.r11-workspace');
+let restored=false;
+if(!workspace && window.__RAVAN_WORKSPACE_HTML){
+  const tpl=document.createElement('template');
+  tpl.innerHTML=window.__RAVAN_WORKSPACE_HTML;
+  workspace=tpl.content.querySelector('#r11Workspace')||tpl.content.querySelector('.r11-workspace');
+  restored=!!workspace;
+}
 if(!workspace){
-  document.documentElement.dataset.ravanWorkspaceBridge='missing-at-load';
+  document.documentElement.dataset.ravanWorkspaceBridge='missing-source';
   return;
 }
 if(workspace.dataset.r19CoreBridge)return;
 workspace.dataset.r19CoreBridge='1';
 const shell=workspace.querySelector('.r11-ws-shell');
-workspace.remove();
-document.documentElement.dataset.ravanWorkspaceBridge='stashed';
+if(workspace.isConnected)workspace.remove();
+document.documentElement.dataset.ravanWorkspaceBridge=restored?'restored-stashed':'stashed';
 
 let attached=false;
 function attach(){
@@ -38,14 +46,12 @@ function attach(){
   if(!main)return false;
   if(shell && shell.parentNode!==workspace)workspace.appendChild(shell);
   if(workspace.parentNode!==main)main.appendChild(workspace);
-  document.documentElement.dataset.ravanWorkspaceBridge='ready';
+  document.documentElement.dataset.ravanWorkspaceBridge=restored?'restored-ready':'ready';
   attached=true;
   return true;
 }
 function tryAttach(){if(!attached)attach()}
 
-/* UI runs in the next script tag. These callbacks run after that synchronous
-   mount path, avoiding parser/document.write timing edge cases. */
 setTimeout(tryAttach,0);
 setTimeout(tryAttach,50);
 setTimeout(tryAttach,250);
