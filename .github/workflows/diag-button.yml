@@ -11,36 +11,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect generated sources
-        shell: python
+      - name: Install Selenium
+        run: python -m pip install -q selenium
+      - name: Run browser click test
+        shell: bash
         run: |
-          import base64,gzip,pathlib,re
-          order=['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js']
-          chunks=[]
-          for fn in order:
-            txt=pathlib.Path(fn).read_text(encoding='utf-8')
-            chunks += re.findall(r'\+\s*"([A-Za-z0-9+/=]+)"',txt)
-          core=gzip.decompress(base64.b64decode(''.join(chunks))).decode('utf-8')
-          lines=core.splitlines()
-          print('===== CORE LINES 112-126 =====')
-          for i in range(111,min(126,len(lines))): print(f'{i+1}: {lines[i]}')
-          print('===== CORE WORKSPACE POS =====',core.find('id="r11Workspace"'))
-          print('===== CORE DYNAMIC SCRIPT POS =====',core.find('ravan-dynamic'))
-
-          txt=pathlib.Path('ravan-dynamic-v13.js').read_text(encoding='utf-8')
-          m=re.search(r'atob\("([A-Za-z0-9+/=]+)"\)',txt)
-          if not m:
-            print('NO_DYNAMIC_B64'); raise SystemExit
-          raw=base64.b64decode(m.group(1))
-          try: dyn=gzip.decompress(raw).decode('utf-8')
-          except Exception:
-            try: dyn=raw.decode('utf-8')
-            except Exception as e: print('DYNAMIC_DECODE_FAIL',repr(e)); raise
-          print('===== DYNAMIC LENGTH =====',len(dyn))
-          for term in ['r11Workspace','r11-ws-shell','r11-workspace','innerHTML','document.body','remove()','removeChild','replaceChildren','appendChild']:
-            print('\n===== DYNAMIC TERM',term,'=====')
-            hits=list(re.finditer(re.escape(term),dyn,re.I))
-            print('COUNT',len(hits))
-            for h in hits[:12]:
-              a=max(0,h.start()-1000);b=min(len(dyn),h.start()+2200)
-              print(dyn[a:b])
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          import time,json
+          o=Options(); o.add_argument('--headless=new'); o.add_argument('--no-sandbox'); o.add_argument('--disable-dev-shm-usage'); o.add_argument('--window-size=1440,1000')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o)
+          try:
+            d.get('http://127.0.0.1:8765/?diag=19.11')
+            time.sleep(2)
+            print('TITLE',d.title)
+            print('WS_SOURCE_LEN',d.execute_script("return (window.__RAVAN_WORKSPACE_HTML||'').length"))
+            print('BRIDGE_LOADED',d.execute_script("return document.documentElement.dataset.ravanBridgeLoaded||''"))
+            print('BRIDGE',d.execute_script("return document.documentElement.dataset.ravanWorkspaceBridge||''"))
+            print('UI',d.execute_script("return document.documentElement.dataset.ravanUi||''"))
+            print('WORKSPACE_CONNECTED',d.execute_script("var w=document.getElementById('r11Workspace');return !!w&&w.isConnected"))
+            print('WORKSPACE_PARENT',d.execute_script("var w=document.getElementById('r11Workspace');return w&&w.parentElement&&w.parentElement.className"))
+            d.execute_script("r112PickRole('teacher'); r11Move(1)")
+            d.execute_script("r115PickTask('lesson'); r11Move(1)")
+            d.execute_script("selectAi('chatgpt')")
+            time.sleep(.3)
+            print('STEP_BEFORE',d.execute_script("return r11State.step"))
+            print('AI_BEFORE',d.execute_script("return r11State.ai"))
+            btn=d.find_element(By.ID,'r11Next')
+            print('BUTTON_TEXT',btn.text)
+            print('BUTTON_DISPLAYED',btn.is_displayed())
+            try:
+              btn.click(); print('CLICK_SENT yes')
+            except Exception as e:
+              print('CLICK_EXCEPTION',repr(e))
+            time.sleep(1)
+            print('WS_CLASS',d.execute_script("var w=document.getElementById('r11Workspace');return w&&w.className"))
+            print('WS_DISPLAY',d.execute_script("var w=document.getElementById('r11Workspace');return w&&getComputedStyle(w).display"))
+            print('GATE_DISPLAY',d.execute_script("var g=document.querySelector('.r11-gate');return g&&getComputedStyle(g).display"))
+            print('DYNAMIC_CHILDREN',d.execute_script("var x=document.getElementById('r11DynamicFields');return x?x.children.length:-1"))
+            print('BODY_TEXT_HAS_WORKSPACE',d.execute_script("return document.body.innerText.includes('فضای کاری معلم')"))
+            for row in d.get_log('browser'):
+              print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
+          finally:
+            d.quit()
+          PY
