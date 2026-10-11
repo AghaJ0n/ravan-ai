@@ -20,17 +20,14 @@ jobs:
           for fn in order:
               txt=pathlib.Path(fn).read_text(encoding='utf-8')
               found=re.findall(r'\+\s*"([A-Za-z0-9+/=]+)"', txt)
-              if not found:
-                  raise SystemExit(f'No payload chunk found in {fn}')
+              if not found: raise SystemExit(f'No payload chunk found in {fn}')
               chunks.extend(found)
-          blob=base64.b64decode(''.join(chunks))
-          core=gzip.decompress(blob).decode('utf-8')
-          print('CORE_LENGTH', len(core))
-          terms=['ساخت فضای کاری من','r11-ws-shell','r11-gate','r11-ai','workspace','addEventListener']
+          core=gzip.decompress(base64.b64decode(''.join(chunks))).decode('utf-8')
+          terms=['function buildWs','r11Workspace.classList','function r113BackFromWorkspace','r11Gate.style','r11Workspace','const r11Workspace','let r11Workspace']
           for term in terms:
               print('\n===== TERM:', term, '=====')
               starts=[m.start() for m in re.finditer(re.escape(term),core,re.I)]
               print('COUNT',len(starts))
-              for i,pos in enumerate(starts[:12],1):
-                  a=max(0,pos-1800); b=min(len(core),pos+2600)
+              for i,pos in enumerate(starts[:8],1):
+                  a=max(0,pos-2400); b=min(len(core),pos+4200)
                   print(f'\n--- hit {i} @ {pos} ---\n{core[a:b]}\n--- end hit ---')
