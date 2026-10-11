@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract button path
+      - name: Extract workspace CSS
         shell: python
         run: |
           import base64,gzip,pathlib,re
@@ -21,8 +21,8 @@ jobs:
             txt=pathlib.Path(fn).read_text(encoding='utf-8')
             chunks += re.findall(r'\+\s*"([A-Za-z0-9+/=]+)"',txt)
           core=gzip.decompress(base64.b64decode(''.join(chunks))).decode('utf-8')
-          for term in ['function r11Move','function updateStep','r11Next.textContent','r11Next.disabled','function renderAis','function chooseAi','r11State.ai']:
+          for term in ['.r11-workspace{','.r11-workspace.open','.r11-ws-shell{','.r11-gate{']:
             print('\n===== '+term+' =====')
-            for m in list(re.finditer(re.escape(term),core,re.I))[:8]:
-              a=max(0,m.start()-1800); b=min(len(core),m.start()+3600)
+            for m in list(re.finditer(re.escape(term),core,re.I))[:12]:
+              a=max(0,m.start()-1000); b=min(len(core),m.start()+2200)
               print(core[a:b])
