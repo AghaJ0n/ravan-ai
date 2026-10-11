@@ -47,12 +47,12 @@ function buildChrome(){
    <div class="r19-account"><div class="r19-avatar" aria-label="حساب کاربری">A</div></div>`;
  const nav=document.createElement('aside');nav.className='r19-nav';nav.setAttribute('aria-label','ناوبری اصلی');
  const items=[['pen','ساخت پرامپت'],['folder','پروژه‌های من'],['template','قالب‌ها'],['book','کتابخانه'],['history','تاریخچه'],['settings','تنظیمات']];
- nav.innerHTML=`<div class="r19-navlist">${items.map((x,i)=>`<button type="button" class="r19-navitem ${i===0?'active':''}" ${i===0?'aria-current="page"':''}>${icon(x[0])}<span>${x[1]}</span></button>`).join('')}</div><div class="r19-usage"><div class="r19-usage-head">${icon('sparkles')}<span>استفاده AI</span></div><div class="r19-usage-bar"><span></span></div><div class="r19-usage-meta"><span>12 / 50</span><span>ماهانه</span></div><button class="r19-upgrade" type="button">${icon('crown')} ارتقا پلن</button></div>`;
+ nav.innerHTML=`<div class="r19-navlist">${items.map((x,i)=>`<button type="button" class="r19-navitem ${i===0?'active':''}" ${i===0?'aria-current="page"':''}>${icon(x[0])}<span>${x[1]}</span></button>`).join('')}</div><div class="r19-usage"><div class="r19-usage-head">${icon('sparkles')}<span>استفاده AI</span></div><div class="r19-usage-bar"><span></span></div><div class="r19-usage-meta"><span>12 / 50</span><span>ماهانه</span></div><button class="r19-upgrade" type="button">${icon('crown')}<span>ارتقا پلن</span></button></div>`;
  const main=document.createElement('main');main.className='r19-main';main.id='r19Main';
  const ctx=document.createElement('aside');ctx.className='r19-context';ctx.setAttribute('aria-label','خلاصه و راهنمای مرحله');ctx.innerHTML=`<div class="r19-context-inner"><div class="r19-slogan"><h3>پرامپت بهتر<br>نتیجه‌های بزرگ‌تر</h3><div class="line"></div></div><div id="r19Progress"></div><div id="r19Help"></div><div id="r19Choices"></div></div>`;
  const toast=document.createElement('div');toast.className='r19-toast-stack';toast.id='r19Toasts';toast.setAttribute('aria-live','polite');
  document.body.innerHTML='';document.body.append(app,toast);app.append(top,nav,main,ctx);main.append(gate);
- bindChrome(top,nav,ctx);addStep4();addCategories();decorateOptionIcons();refreshSide();
+ bindChrome(top,nav,ctx);addStep4();addCategories();addSearchIcons();decorateOptionIcons();refreshSide();
 }
 function bindChrome(top,nav,ctx){
  const search=q('#r19Search',top);if(search){
@@ -63,7 +63,7 @@ function bindChrome(top,nav,ctx){
  qa('.r19-navitem',nav).forEach((b,i)=>{if(i===0)return;b.addEventListener('click',()=>toast('این بخش در نسخه بعدی فعال می‌شود.'))});
  q('.r19-upgrade',nav)?.addEventListener('click',()=>toast('مدیریت پلن به‌زودی اضافه می‌شود.'));
  qa('.r19-icon-btn',top).forEach((b,i)=>{if(b.classList.contains('r19-mobile-context-toggle'))return;b.addEventListener('click',()=>toast(['راهنمای این مرحله در پنل خلاصه نمایش داده می‌شود.','تنظیمات به‌زودی یکپارچه می‌شود.','تغییر پوسته در نسخه بعدی فعال می‌شود.'][i]||'به‌زودی'))});
- q('.r19-mobile-context-toggle',top)?.addEventListener('click',()=>{ctx.classList.toggle('open')});
+ q('.r19-mobile-context-toggle',top)?.addEventListener('click',()=>ctx.classList.toggle('open'));
  document.addEventListener('keydown',e=>{if(e.key==='Escape')ctx.classList.remove('open')});
 }
 function addStep4(){
@@ -75,10 +75,13 @@ function addCategories(){
  roleTaskDef().forEach(def=>{const box=q(def.box);if(!box||q('.r19-cats',box))return;const menu=q(def.menu,box);const row=document.createElement('div');row.className='r19-cats';row.setAttribute('aria-label','فیلتر دسته‌ها');row.innerHTML=cats.map((c,i)=>`<button type="button" class="r19-cat ${i===0?'active':''}" data-cat="${c}" aria-pressed="${i===0?'true':'false'}">${c}</button>`).join('');if(menu)box.insertBefore(row,menu);else box.append(row);row.addEventListener('click',e=>{const b=e.target.closest('.r19-cat');if(!b)return;qa('.r19-cat',row).forEach(x=>{const on=x===b;x.classList.toggle('active',on);x.setAttribute('aria-pressed',on?'true':'false')});applyChoiceFilter(box,def);window.dispatchEvent(new CustomEvent('ravan:filterchange',{detail:{box}}))})
  })
 }
+function addSearchIcons(){
+ roleTaskDef().forEach(def=>{const box=q(def.box),input=box&&q(def.input,box);if(!box||!input||q('.r19-field-search-icon',box))return;const s=document.createElement('span');s.className='r19-field-search-icon';s.setAttribute('aria-hidden','true');s.innerHTML=icon('search');box.insertBefore(s,input)})
+}
 function applyChoiceFilter(box,def){
  const input=q(def.input,box),query=norm(input?.value),cat=q('.r19-cat.active',box)?.dataset.cat||'همه';let count=0;
  qa(def.opt,box).forEach(o=>{const t=norm(o.textContent);const catOk=cat==='همه'||(catMap[cat]||[]).some(k=>t.includes(norm(k)));const show=(!query||t.includes(query))&&catOk;o.hidden=!show;if(show)count++});
- let empty=q('.r19-choice-empty',box);if(!empty){empty=document.createElement('div');empty.className='r19-choice-empty';empty.style.cssText='display:none;grid-column:1/-1;padding:18px;text-align:center;color:#667085;background:#f8fafd;border:1px dashed #d9dee8;border-radius:12px;font-size:12px';empty.textContent='مورد مشابهی پیدا نشد؛ می‌توانید متن دلخواه خودتان را وارد کنید.';q(def.menu,box)?.append(empty)}empty.style.display=count?'none':'block';
+ let empty=q('.r19-choice-empty',box);if(!empty){empty=document.createElement('div');empty.className='r19-choice-empty';empty.textContent='مورد مشابهی پیدا نشد؛ می‌توانید متن دلخواه خودتان را وارد کنید.';q(def.menu,box)?.append(empty)}empty.hidden=!!count;
 }
 function decorateOptionIcons(){
  roleTaskDef().forEach(def=>{qa(`${def.box} ${def.opt}`).forEach(o=>{const ico=q('.ico',o);if(!ico||ico.dataset.svg)return;const t=norm(o.textContent);let id='briefcase';if(/برنامه|توسعه|نرم افزار|نرم‌افزار|مهندس/.test(t))id='code';else if(/معلم|دانش|آموز|استاد|آموزش/.test(t))id='graduation';else if(/طراح|گرافیک|هنر|خلاق/.test(t))id='palette';else if(/پژوه|تحقیق|آزمایش/.test(t))id='flask';else if(/محتوا|نویس|رسانه/.test(t))id='content';else if(/مشاور|کاربر|منابع انسانی|تیم/.test(t))id='users';ico.innerHTML=icon(id);ico.dataset.svg='1'})})
@@ -92,11 +95,14 @@ function refreshSide(){
 }
 function toast(msg,type='success'){const stack=q('#r19Toasts');if(!stack)return;while(stack.children.length>=3)stack.firstElementChild.remove();const t=document.createElement('div');t.className=`r19-toast ${type}`;t.textContent=msg;stack.append(t);setTimeout(()=>t.remove(),3000)}
 function sync(){
- addStep4();addCategories();decorateOptionIcons();refreshSide();const ws=q('.r11-ws-shell'),main=q('.r19-main');if(ws&&main&&!main.contains(ws))main.append(ws);
+ addStep4();addCategories();addSearchIcons();decorateOptionIcons();refreshSide();const ws=q('.r11-ws-shell'),main=q('.r19-main');if(ws&&main&&!main.contains(ws))main.append(ws);
  document.documentElement.dataset.ravanUi='19-consolidated';
 }
+let syncQueued=false;
+function scheduleSync(){if(syncQueued)return;syncQueued=true;requestAnimationFrame(()=>{syncQueued=false;sync()})}
 function install(){
- buildChrome();sync();document.addEventListener('input',()=>setTimeout(refreshSide,0),true);document.addEventListener('change',()=>setTimeout(refreshSide,0),true);document.addEventListener('click',()=>setTimeout(sync,20),true);new MutationObserver(()=>sync()).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','aria-selected']});window.RAVAN_UI={applyChoiceFilter,toast,refreshSide};
+ window.RAVAN_UI={applyChoiceFilter,toast,refreshSide};buildChrome();sync();document.addEventListener('input',()=>setTimeout(refreshSide,0),true);document.addEventListener('change',()=>setTimeout(refreshSide,0),true);document.addEventListener('click',scheduleSync,true);
+ new MutationObserver(muts=>{const meaningful=muts.some(m=>{const t=m.target?.nodeType===1?m.target:m.target?.parentElement;return t&&!t.closest?.('.r19-context,.r19-toast-stack')});if(meaningful)scheduleSync()}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','aria-selected']});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
