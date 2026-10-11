@@ -6,10 +6,10 @@
 <title>RAVAN AI — روان</title>
 <meta name="description" content="میزکار هوشمند فارسی برای ساخت پرامپت و فرایندهای کاری بر اساس نقش، نوع کار و ابزار هوش مصنوعی.">
 <style>
-html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;background:#f5f6fb;color:#20253a}
+html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;background:#f5f7fb;color:#172033}
 #boot{height:100%;display:grid;place-items:center;text-align:center;padding:24px;box-sizing:border-box}
-#boot>div{background:#fff;border:1px solid #e2e5ef;border-radius:20px;padding:28px 32px;box-shadow:0 18px 55px rgba(45,43,84,.12);max-width:560px}
-h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#6f758a;line-height:1.9}
+#boot>div{background:#fff;border:1px solid #e4e7ec;border-radius:18px;padding:28px 32px;box-shadow:0 8px 30px rgba(20,30,55,.05);max-width:560px}
+h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
 </style>
 </head>
 <body>
@@ -31,7 +31,9 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#6f758a;line-height:1.9}
     const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
     let html=await new Response(stream).text();
-    html=html.replace('</body>','<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-combos-v17.js?v=17.0"><\/script><script src="ravan-ui-v19.js?v=19.0"><\/script><script src="ravan-ui-v20.js?v=20.0"><\/script></body>');
+    const styles='<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.1"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.1"><link rel="stylesheet" href="ravan-components-v19.css?v=19.1">';
+    const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-ui-v19.js?v=19.1"><\/script><script src="ravan-a11y-v19.js?v=19.1"><\/script>';
+    html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
     document.open(); document.write(html); document.close();
   } catch(e) {
     document.getElementById("boot").innerHTML="<div><h1>RAVAN AI</h1><p>مرورگر نتوانست برنامه را بارگذاری کند. لطفاً از نسخه جدید Chrome یا Edge استفاده کنید.</p></div>";
