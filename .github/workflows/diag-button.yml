@@ -1,0 +1,28 @@
+name: Diagnose workspace button
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/diag-button.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract button path
+        shell: python
+        run: |
+          import base64,gzip,pathlib,re
+          order=['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js']
+          chunks=[]
+          for fn in order:
+            txt=pathlib.Path(fn).read_text(encoding='utf-8')
+            chunks += re.findall(r'\+\s*"([A-Za-z0-9+/=]+)"',txt)
+          core=gzip.decompress(base64.b64decode(''.join(chunks))).decode('utf-8')
+          for term in ['function r11Move','function updateStep','r11Next.textContent','r11Next.disabled','function renderAis','function chooseAi','r11State.ai']:
+            print('\n===== '+term+' =====')
+            for m in list(re.finditer(re.escape(term),core,re.I))[:8]:
+              a=max(0,m.start()-1800); b=min(len(core),m.start()+3600)
+              print(core[a:b])
