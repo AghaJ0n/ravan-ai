@@ -27,9 +27,10 @@ jobs:
           o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
           d=webdriver.Chrome(options=o)
           try:
-            d.get('http://127.0.0.1:8765/?diag=1')
+            d.get('http://127.0.0.1:8765/?diag=19.8')
             time.sleep(2)
             print('TITLE',d.title)
+            print('BRIDGE_LOADED',d.execute_script("return document.documentElement.dataset.ravanBridgeLoaded||''"))
             print('BRIDGE',d.execute_script("return document.documentElement.dataset.ravanWorkspaceBridge||''"))
             print('UI',d.execute_script("return document.documentElement.dataset.ravanUi||''"))
             print('WORKSPACE_CONNECTED',d.execute_script("var w=document.getElementById('r11Workspace');return !!w&&w.isConnected"))
@@ -44,8 +45,7 @@ jobs:
             print('BUTTON_TEXT',btn.text)
             print('BUTTON_DISPLAYED',btn.is_displayed())
             try:
-              btn.click()
-              print('CLICK_SENT yes')
+              btn.click(); print('CLICK_SENT yes')
             except Exception as e:
               print('CLICK_EXCEPTION',repr(e))
             time.sleep(1)
