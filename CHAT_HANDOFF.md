@@ -7,19 +7,29 @@
 - سایت: `https://aghaj0n.github.io/ravan-ai/`
 - شاخه انتشار: `main`
 - GitHub Pages فعال است.
-- آخرین دیپلوی بررسی‌شده برای commit `2c630b4f19e937cec281404b8b897ac968dba37b` با موفقیت کامل شده است.
-- `index.html` در حال حاضر این فایل‌ها را بارگذاری می‌کند:
-  - `ravan-dynamic-v13.js`
-  - `ravan-combos-v17.js`
-  - `ravan-ui-v19.js`
+- Core فشرده‌ی موجود حفظ شده و Bootstrap هنوز از payloadها و `ravan-dynamic-v13.js` استفاده می‌کند.
+- لایه UI دیگر زنجیره‌ای از overrideهای v14/v15/v16/v18/v20 نیست و Consolidate شده است.
+
+## فایل‌های فعال UI
+`index.html` بعد از Core این فایل‌ها را بارگذاری می‌کند:
+- `ravan-tokens-v19.css` — Design Tokens
+- `ravan-layout-v19.css` — Desktop/Tablet/Mobile layout
+- `ravan-components-v19.css` — Components, states, workspace styling
+- `ravan-ui-v19.js` — UI chrome/state/context/filtering
+- `ravan-a11y-v19.js` — Keyboard/ARIA/combobox behavior
+- `ravan-icons.svg` — SVG icon sprite
+- `ravan-scenic-v19.svg` — تزئین بصری Context panel
+
+فایل‌های `ravan-ui-v14.js`, `ravan-ui-v15.js`, `ravan-ui-v16.js`, `ravan-ui-v18.js`, `ravan-ui-v20.js` و `ravan-combos-v17.js` از tree فعلی حذف شده‌اند؛ تاریخچه Git برای rollback باقی است.
 
 ## هدف محصول
-RAVAN AI یک میزکار فارسی RTL برای ساخت ورودی/پرامپت دقیق بر اساس سه مرحله اصلی است:
+RAVAN AI یک Web Application / AI Workspace فارسی RTL برای ساخت ورودی/پرامپت دقیق بر اساس مسیر اصلی زیر است:
 1. نقش کاربر
 2. نوع کار
-3. مقصد هوش مصنوعی
+3. هوش مصنوعی / مقصد AI
+4. Workspace / ساخت پرامپت
 
-بعد از تکمیل هر سه مرحله، فرم تخصصی متناسب با همان ترکیب ساخته می‌شود.
+بعد از تکمیل سه انتخاب اول، فرم تخصصی متناسب با همان ترکیب ساخته می‌شود.
 
 ## قانون مهم جریان
 فیلد «هدف اصلی» نباید قبل از کامل شدن این سه بخش دیده شود:
@@ -27,68 +37,83 @@ RAVAN AI یک میزکار فارسی RTL برای ساخت ورودی/پرام�
 
 بعد از تکمیل هر سه، عنوان/راهنما/مثال هدف اصلی باید متناسب با همان پروفایل ساخته شود.
 
-## قانون مهم همه Combo Box ها
-هر فیلدی که ماهیت انتخابی دارد باید همزمان این قابلیت‌ها را داشته باشد:
+## قانون Combo Box
+هر فیلد انتخابی باید این قابلیت‌ها را حفظ کند:
 - انتخاب از پیشنهادها
 - تایپ آزاد
-- جست‌وجوی زنده هنگام تایپ
+- جست‌وجوی زنده
 - فیلتر پیشنهادها
-- استفاده با ماوس و صفحه‌کلید
-- Arrow Up/Down برای حرکت
-- Enter برای انتخاب
-- Esc برای بستن
+- ماوس و صفحه‌کلید
+- Arrow Up/Down
+- Enter
+- Esc
+- ARIA combobox/listbox
 
-این رفتار در `ravan-combos-v17.js` پیاده شده و نباید در بازطراحی‌های بعدی از بین برود.
+این رفتار اکنون در `ravan-a11y-v19.js` Consolidate شده است؛ فایل قدیمی `ravan-combos-v17.js` دیگر در runtime نیست.
 
-## جهت طراحی فعلی
-نسخه `ravan-ui-v19.js` بر اساس تصویر مرجع SaaS که کاربر فرستاده ساخته شده است. جهت بصری مورد نظر:
-- رابط دسکتاپ عریض، نه ستون باریک وسط صفحه
-- هدر ثابت و سبک
-- سایدبار ناوبری سمت چپ
-- محتوای اصلی در مرکز
-- پنل context/progress در سمت راست
-- استفاده واقعی از عرض نمایشگر
-- کارت‌های کم‌ارتفاع و چندستونه برای کاهش اسکرول عمودی
-- رنگ اصلی بنفش/ایندیگو
-- پس‌زمینه روشن آبی-خاکستری
-- تایپوگرافی فارسی نزدیک به Vazirmatn
-- طراحی شبیه SaaS حرفه‌ای، تمیز و responsive
+## Design System فعلی
+- Page background: `#F5F7FB`
+- Surface: `#FFFFFF`
+- Text: `#172033`
+- Muted: `#667085`
+- Border: `#E4E7EC`
+- Primary: `#6246EA`
+- Success: `#16A36A`
+- Warning: `#F59E0B`
+- Error: `#E5484D`
+- Info: `#2F80ED`
+- Font: Vazirmatn با fallback Tahoma / Segoe UI
+- Radius: 10 / 14 / 18 / 24
+- Spacing: سیستم 4pt
+- Shadowها محدود و سبک
+- Motion: حدود 160–200ms با `prefers-reduced-motion`
 
-## اجزای بصری v19
-- Top bar با برند RAVAN AI، جست‌وجوی سراسری، تنظیمات/راهنما و avatar
-- Left navigation شامل ساخت پرامپت، پروژه‌های من، قالب‌ها، کتابخانه، تاریخچه، تنظیمات
-- Stepper چهارمرحله‌ای در محتوای اصلی
-- Role/Task cards چندستونه
-- Right context panel با progress ring، وضعیت مراحل، راهنما و انتخاب‌های فعلی
-- فایل تزئینی پس‌زمینه پنل راست: `ravan-scenic-v19.svg`
+## معماری Layout
+Desktop بزرگ:
+- Navigation در سمت راست: حدود `240px`
+- Main در وسط: `minmax(0,1fr)`
+- Context در سمت چپ: حدود `260px`
+- Header حدود `70px`
+- Max width کل: `1700px`
 
-## معماری نقش/کار/AI
-نقش، نوع کار و مقصد AI باید مستقل انتخاب شوند. نمونه‌ها:
-- نقش‌ها: معلم، طراح، پژوهشگر، دانش‌آموز/دانشجو، مدیر، برنامه‌نویس، تولیدکننده محتوا، کارشناس اداری و ...
-- مقصدها: ChatGPT، Gemini، NotebookLM، Claude، Microsoft Copilot و گزینه پیشنهاد بهترین ابزار
+Responsive:
+- 1200–1439: سه‌ستونه فشرده‌تر
+- 900–1199: Navigation به icon rail تبدیل می‌شود و Context بالای Main می‌رود
+- زیر 768: تک‌ستونه، Navigation پایین صفحه و Context به Drawer تبدیل می‌شود
+
+## UI اصلی
+- Header: Brand، Global Search، Ctrl+K، Help/Settings/Theme، Account
+- Navigation راست: ساخت پرامپت، پروژه‌های من، قالب‌ها، کتابخانه، تاریخچه، تنظیمات، Usage
+- Main: Stepper چهارمرحله‌ای، Title، Search، Filter chips، Cards
+- Context چپ: Progress، راهنمای مرحله، انتخاب‌های فعلی
+- Role/Task cards: Grid responsive و انتخاب با Border + Check
+- AI cards: Grid responsive
+- Workspace: همان Design System با Fields Grid و comboboxهای قابل تایپ
+- Iconها: SVG outline؛ Emoji برای UI production استفاده نشود
 
 ## نکات UX که باید حفظ شوند
-- RTL واقعی و ساختاری، نه فقط text-align:right
-- Back در جاهایی که لازم است و حفظ داده‌ها هنگام برگشت
-- Start Over باید جدا از Back باشد
-- استفاده کامل از فضای افقی دسکتاپ
-- صفحه نباید بی‌دلیل بلند شود
-- فیلدهای نامرتبط با نقش/کار/AI نمایش داده نشوند
-- پروژه‌ها و پروفایل‌ها با `localStorage` نگه‌داری می‌شوند
-- Chrome اولویت اول تست است، Edge دوم
+- RTL ساختاری واقعی
+- نقش/نوع کار/AI مستقل انتخاب شوند
+- Back داده‌ها را حفظ کند
+- Start Over از Back جدا باشد
+- فیلد نامرتبط نمایش داده نشود
+- `localStorage` فعلی حفظ شود
+- Chrome اولویت تست اول، Edge دوم
+- Focus visible و keyboard navigation حفظ شود
+- Touch target موبایل حداقل حدود 44px
 
-## آخرین درخواست کاربر
-کاربر یک تصویر کامل طراحی SaaS برای RAVAN AI فرستاد و خواست همان طرح روی سایت پیاده شود. نسخه v19 برای همین هدف ساخته و روی `main` منتشر شده است.
+## آخرین تغییر معماری
+بر اساس Design System مرجع کاربر، تصمیم گرفته شد که به‌جای اضافه‌کردن Override جدید، UI Consolidate شود. نتیجه اکنون در فایل‌های تفکیک‌شده‌ی Tokens / Layout / Components / UI / A11y قرار دارد و `index.html` فقط همین لایه نهایی را بعد از Core بارگذاری می‌کند.
 
-## قدم بعدی پیشنهادی در چت جدید
-1. ابتدا سایت زنده را بازبینی کن.
-2. ظاهر v19 را با تصویر مرجع کاربر مقایسه کن.
-3. هر اختلاف بصری محسوس را مستقیم در `ravan-ui-v19.js` اصلاح کن.
-4. بعد از هر تغییر، commit و وضعیت GitHub Pages را بررسی کن.
-5. قواعد combo box، flow سه‌مرحله‌ای و فرم‌های داینامیک را هنگام تغییر UI خراب نکن.
+## قدم بعدی
+1. سایت زنده را روی Chrome Desktop بازبینی بصری کن.
+2. با تصویر Design System مرجع مقایسه کن: Navigation باید راست و Context باید چپ باشد.
+3. Flow کامل Role → Task → AI → Workspace را تست کن.
+4. Role/Task search و Dynamic field comboboxها را با Mouse + Arrow + Enter + Esc تست کن.
+5. عرض‌های حدود 1440، 1024، 768 و Mobile را تست کن.
+6. اگر اختلاف بصری باقی بود، در یکی از سه CSS اصلی اصلاح کن؛ Override نسخه‌ای جدید نساز.
+7. رفتارهای state/a11y را فقط در `ravan-ui-v19.js` یا `ravan-a11y-v19.js` اصلاح کن.
 
 ## دسترسی GitHub
-اتصال فعلی فقط برای repository زیر مجاز شده است:
+اتصال فعلی برای repository زیر مجاز است:
 `AghaJ0n/ravan-ai`
-
-به repositoryهای دیگر کاربر دسترسی داده نشده است.
