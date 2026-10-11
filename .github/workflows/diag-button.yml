@@ -27,7 +27,7 @@ jobs:
           o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
           d=webdriver.Chrome(options=o)
           try:
-            d.get('http://127.0.0.1:8765/?diag=19.9')
+            d.get('http://127.0.0.1:8765/?diag=19.10')
             time.sleep(2)
             print('TITLE',d.title)
             print('BRIDGE_LOADED',d.execute_script("return document.documentElement.dataset.ravanBridgeLoaded||''"))
