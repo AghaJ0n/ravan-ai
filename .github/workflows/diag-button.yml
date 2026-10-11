@@ -11,18 +11,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract workspace CSS
-        shell: python
+      - name: Install Selenium
+        run: python -m pip install -q selenium
+      - name: Run browser click test
+        shell: bash
         run: |
-          import base64,gzip,pathlib,re
-          order=['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js']
-          chunks=[]
-          for fn in order:
-            txt=pathlib.Path(fn).read_text(encoding='utf-8')
-            chunks += re.findall(r'\+\s*"([A-Za-z0-9+/=]+)"',txt)
-          core=gzip.decompress(base64.b64decode(''.join(chunks))).decode('utf-8')
-          for term in ['.r11-workspace{','.r11-workspace.open','.r11-ws-shell{','.r11-gate{']:
-            print('\n===== '+term+' =====')
-            for m in list(re.finditer(re.escape(term),core,re.I))[:12]:
-              a=max(0,m.start()-1000); b=min(len(core),m.start()+2200)
-              print(core[a:b])
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          import time,json
+          o=Options(); o.add_argument('--headless=new'); o.add_argument('--no-sandbox'); o.add_argument('--disable-dev-shm-usage'); o.add_argument('--window-size=1440,1000')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o)
+          try:
+            d.get('http://127.0.0.1:8765/?diag=1')
+            time.sleep(2)
+            print('TITLE',d.title)
+            print('BRIDGE',d.execute_script("return document.documentElement.dataset.ravanWorkspaceBridge||''"))
+            print('UI',d.execute_script("return document.documentElement.dataset.ravanUi||''"))
+            print('WORKSPACE_CONNECTED',d.execute_script("var w=document.getElementById('r11Workspace');return !!w&&w.isConnected"))
+            print('WORKSPACE_PARENT',d.execute_script("var w=document.getElementById('r11Workspace');return w&&w.parentElement&&w.parentElement.className"))
+            d.execute_script("r112PickRole('teacher'); r11Move(1)")
+            d.execute_script("r115PickTask('lesson'); r11Move(1)")
+            d.execute_script("selectAi('chatgpt')")
+            time.sleep(.3)
+            print('STEP_BEFORE',d.execute_script("return r11State.step"))
+            print('AI_BEFORE',d.execute_script("return r11State.ai"))
+            btn=d.find_element(By.ID,'r11Next')
+            print('BUTTON_TEXT',btn.text)
+            print('BUTTON_DISPLAYED',btn.is_displayed())
+            try:
+              btn.click()
+              print('CLICK_SENT yes')
+            except Exception as e:
+              print('CLICK_EXCEPTION',repr(e))
+            time.sleep(1)
+            print('WS_CLASS',d.execute_script("var w=document.getElementById('r11Workspace');return w&&w.className"))
+            print('WS_DISPLAY',d.execute_script("var w=document.getElementById('r11Workspace');return w&&getComputedStyle(w).display"))
+            print('GATE_DISPLAY',d.execute_script("var g=document.querySelector('.r11-gate');return g&&getComputedStyle(g).display"))
+            print('DYNAMIC_CHILDREN',d.execute_script("var x=document.getElementById('r11DynamicFields');return x?x.children.length:-1"))
+            print('BODY_TEXT_HAS_WORKSPACE',d.execute_script("return document.body.innerText.includes('فضای کاری معلم')"))
+            for row in d.get_log('browser'):
+              print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
+          finally:
+            d.quit()
+          PY
