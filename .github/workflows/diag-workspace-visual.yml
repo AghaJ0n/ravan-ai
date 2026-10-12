@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Selenium
         run: python -m pip install -q selenium
-      - name: Inspect workspace after click
+      - name: Inspect workspace after real clicks
         shell: bash
         run: |
           python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
@@ -21,24 +21,38 @@ jobs:
           python - <<'PY'
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
-          from selenium.webdriver.common.by import By
           import time,json
           o=Options(); o.add_argument('--headless=new'); o.add_argument('--no-sandbox'); o.add_argument('--disable-dev-shm-usage'); o.add_argument('--window-size=1650,930')
           o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
           d=webdriver.Chrome(options=o)
+          def click_contains(selector,text):
+            return d.execute_script("""
+              const els=[...document.querySelectorAll(arguments[0])];
+              const el=els.find(x=>x.textContent.includes(arguments[1]) && getComputedStyle(x).display!=='none');
+              if(!el)return null; el.click(); return el.textContent.trim();
+            """,selector,text)
           try:
-            d.get('http://127.0.0.1:8765/?diag=visual2')
+            d.get('http://127.0.0.1:8765/?diag=real-19.12')
             time.sleep(2)
-            d.execute_script("window.toast=window.toast||function(){}; r112PickRole('teacher'); r11Move(1); r115PickTask('assessment'); r11Move(1); selectAi('chatgpt')")
+            print('UI',d.execute_script("return document.documentElement.dataset.ravanUi||''"))
+            print('ROLE_CLICK',click_contains('.r112-role-option','معلم'))
             time.sleep(.3)
-            btn=d.find_element(By.ID,'r11Next')
-            print('BTN',btn.text,btn.is_displayed())
-            btn.click()
+            print('NEXT1',click_contains('button','مرحله بعد'))
+            time.sleep(.4)
+            print('TASK_CLICK',click_contains('.r115-task-option','آزمون'))
+            time.sleep(.3)
+            print('NEXT2',click_contains('button','مرحله بعد'))
+            time.sleep(.4)
+            print('AI_CLICK',click_contains('.r11-ai','ChatGPT'))
+            time.sleep(.4)
+            print('BUILD_BUTTON',click_contains('button','ساخت فضای کاری من'))
             time.sleep(1)
-            print('WS',d.execute_script("var w=document.getElementById('r11Workspace'),s=w&&getComputedStyle(w);return w?{class:w.className,display:s.display,position:s.position,top:s.top,right:s.right,bottom:s.bottom,left:s.left,width:s.width,height:s.height,z:s.zIndex,rect:w.getBoundingClientRect().toJSON(),parent:w.parentElement&&w.parentElement.className,html:w.innerText.slice(0,700)}:null"))
-            print('SHELL',d.execute_script("var w=document.querySelector('#r11Workspace .r11-ws-shell'),s=w&&getComputedStyle(w);return w?{display:s.display,position:s.position,width:s.width,height:s.height,rect:w.getBoundingClientRect().toJSON()}:null"))
-            print('MAIN',d.execute_script("var m=document.querySelector('.r19-main'),s=getComputedStyle(m);return {display:s.display,rect:m.getBoundingClientRect().toJSON(),children:[...m.children].map(x=>x.className)}"))
-            print('GATE',d.execute_script("var g=document.querySelector('.r11-gate'),s=getComputedStyle(g);return {display:s.display,rect:g.getBoundingClientRect().toJSON()}"))
+            print('WS',d.execute_script("var w=document.getElementById('r11Workspace'),s=w&&getComputedStyle(w);return w?{class:w.className,display:s.display,position:s.position,width:s.width,height:s.height,rect:w.getBoundingClientRect().toJSON(),parent:w.parentElement&&w.parentElement.className,fields:document.querySelectorAll('#r11DynamicFields .r11-field').length}:null"))
+            print('ROOT_CLASS',d.execute_script("return document.documentElement.className"))
+            print('GATE_DISPLAY',d.execute_script("var g=document.querySelector('.r11-gate');return g&&getComputedStyle(g).display"))
+            print('PROGRESS',d.execute_script("return document.querySelector('#r19Progress')?.innerText||''"))
+            print('HELP',d.execute_script("return document.querySelector('#r19Help')?.innerText||''"))
+            print('WORKSPACE_TEXT',d.execute_script("return document.getElementById('r11Workspace')?.innerText.slice(0,900)||''"))
             d.save_screenshot('/tmp/workspace.png')
             for row in d.get_log('browser'): print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
           finally:d.quit()
