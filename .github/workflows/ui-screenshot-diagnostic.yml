@@ -1,0 +1,39 @@
+name: RAVAN UI screenshot diagnostic
+on:
+  push:
+    paths:
+      - '.github/workflows/ui-screenshot-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Capture desktop UI
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.support import expected_conditions as EC
+          import time
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          d=webdriver.Chrome(options=o)
+          try:
+            d.get('http://127.0.0.1:8765/?screenshot=19.20')
+            WebDriverWait(d,20).until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
+            time.sleep(1)
+            d.save_screenshot('ravan-ui-19.20.png')
+          finally:
+            d.quit()
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ravan-ui-19.20
+          path: ravan-ui-19.20.png
