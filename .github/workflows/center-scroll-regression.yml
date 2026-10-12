@@ -40,7 +40,7 @@ jobs:
           # Desktop: header, right nav and left context must stay put while main scrolls.
           d=browser(1650,930)
           try:
-            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.23')
+            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.24')
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-main')))
             js=d.execute_script
@@ -71,14 +71,21 @@ jobs:
           # Tablet: center remains independently scrollable while narrow nav stays anchored.
           d=browser(1024,850)
           try:
-            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.23-tablet')
+            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.24-tablet')
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
             js=d.execute_script
             check(js("return getComputedStyle(document.body).overflowY")=='hidden','tablet body should not scroll')
             nav0=js("return document.querySelector('.r19-nav').getBoundingClientRect().top")
-            js("const m=document.querySelector('.r19-main');const s=document.createElement('div');s.style.height='1500px';m.appendChild(s);m.scrollTop=500")
+            before_metrics=js("const m=document.querySelector('.r19-main'),a=document.querySelector('.r19-app'),c=document.querySelector('.r19-context');const cs=getComputedStyle(m);return {innerWidth:innerWidth,innerHeight:innerHeight,mainRect:m.getBoundingClientRect(),clientHeight:m.clientHeight,scrollHeight:m.scrollHeight,overflowY:cs.overflowY,height:cs.height,maxHeight:cs.maxHeight,gridRows:getComputedStyle(a).gridTemplateRows,contextRect:c.getBoundingClientRect()}")
+            print('TABLET_BEFORE',json.dumps(before_metrics,ensure_ascii=False))
+            js("const m=document.querySelector('.r19-main');const s=document.createElement('div');s.id='tablet-scroll-test-spacer';s.style.height='1500px';s.style.minHeight='1500px';m.appendChild(s)")
+            after_append=js("const m=document.querySelector('.r19-main'),cs=getComputedStyle(m);return {clientHeight:m.clientHeight,scrollHeight:m.scrollHeight,overflowY:cs.overflowY,height:cs.height,maxHeight:cs.maxHeight,rect:m.getBoundingClientRect()} ")
+            print('TABLET_AFTER_APPEND',json.dumps(after_append,ensure_ascii=False))
+            js("document.querySelector('.r19-main').scrollTop=500")
             time.sleep(.2)
-            check(js("return document.querySelector('.r19-main').scrollTop")>400,'tablet main did not scroll')
+            tablet_scroll=js("return document.querySelector('.r19-main').scrollTop")
+            print('TABLET_SCROLLTOP',tablet_scroll)
+            check(tablet_scroll>400,'tablet main did not scroll')
             check(abs(js("return document.querySelector('.r19-nav').getBoundingClientRect().top")-nav0)<1,'tablet nav moved during center scroll')
           finally:
             d.quit()
@@ -86,7 +93,7 @@ jobs:
           # Phone: preserve natural document scrolling and avoid nested-scroll traps.
           d=browser(390,844)
           try:
-            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.23-mobile')
+            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.24-mobile')
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
             js=d.execute_script
             check(js("return getComputedStyle(document.body).overflowY") in ('auto','visible'),'mobile body should retain natural scrolling')
