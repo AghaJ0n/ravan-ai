@@ -1,29 +1,190 @@
-name: Diagnose all controls
+name: RAVAN full control regression
 on:
   push:
     paths:
+      - 'index.html'
+      - 'ravan-core-bridge-v19.js'
+      - 'ravan-ui-v19.js'
+      - 'ravan-dynamic-v13.js'
+      - 'ravan-a11y-v19.js'
+      - 'ravan-*-v19.css'
       - '.github/workflows/diag-all-controls.yml'
 permissions:
   contents: read
 jobs:
-  diagnose:
+  chrome-e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Locate missing legacy functions
+      - run: python -m pip install -q selenium
+      - name: Exercise workspace and professional controls
         shell: bash
         run: |
-          node <<'NODE'
-          const fs=require('fs'),zlib=require('zlib');
-          const files=['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js'];
-          let b64='';for(const f of files){const s=fs.readFileSync(f,'utf8');const m=s.match(/\+\"([A-Za-z0-9+/=]+)\"\s*;?\s*$/s);if(!m)throw new Error(f);b64+=m[1];}
-          const html=zlib.gunzipSync(Buffer.from(b64,'base64')).toString('utf8');
-          const scripts=[]; for(const m of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) scripts.push(m[1]);
-          const names=['move','setStep','openHomeV7','openTeacherProfileV6','openSettingsV9','saveCurrentToLibraryV7','toggleAdaptiveV6','applyDefaults','saveProjectFile','newProjectV7','undoV8','redoV8','runQualityCheck','previewMD','prepareForAIV7','toggleGuidesV6','closeModal','setOutputTarget','downloadActiveMD','copyOutput','downloadTXT','downloadJSON','printSummary','closeQualityModal','jumpToFirstIssue','qualityProceed','closeSummaryV8','exportAfterSummaryV8','closeSuggestV6','saveTeacherProfileV6','saveSettingsV9','startProfessional'];
-          console.log('SCRIPT_COUNT',scripts.length,scripts.map(s=>s.length));
-          for(const n of names){
-            const hits=[];
-            scripts.forEach((s,i)=>{let p=s.indexOf('function '+n); if(p<0)p=s.indexOf(n+'='); if(p<0)p=s.indexOf(n+' ='); if(p<0)p=s.indexOf(n+'('); if(p>=0) hits.push({script:i+1,pos:p,snippet:s.slice(Math.max(0,p-120),p+320).replace(/\n/g,' ↵ ')});});
-            console.log('FUNC',n,JSON.stringify(hits));
-          }
-          NODE
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          import json,time,sys
+
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o)
+          failures=[]
+          def js(code,*args): return d.execute_script(code,*args)
+          def check(cond,msg):
+            if not cond: failures.append(msg)
+          def visible_step():
+            return js("return [...document.querySelectorAll('#r19ProfessionalHost section.step')].findIndex(s=>getComputedStyle(s).display!=='none')+1")
+          def modal_open(mid):
+            return js("const e=document.getElementById(arguments[0]);return !!e && (e.classList.contains('open') || (getComputedStyle(e).display!=='none' && !e.hidden))",mid)
+          try:
+            d.get('http://127.0.0.1:8765/?e2e=19.16')
+            time.sleep(2.5)
+            recovery=js("return {recovery:window.__RAVAN_LEGACY_RUNTIME_RECOVERY||'',move:typeof window.move,setStep:typeof window.setStep,bridge:document.documentElement.dataset.ravanBridgeLoaded||'',legacy:document.documentElement.dataset.ravanLegacyRuntime||''}")
+            print('BOOT',json.dumps(recovery,ensure_ascii=False))
+            check(recovery['recovery']=='19.16','legacy runtime recovery marker missing')
+            check(recovery['move']=='function','move() is not recovered')
+            check(recovery['setStep']=='function','setStep() is not recovered')
+            check(recovery['bridge']=='19.16','v19.16 bridge not loaded')
+            check(recovery['legacy']=='ready','bridge did not see recovered legacy runtime')
+
+            # Complete RAVAN gate -> workspace and open the teacher professional form.
+            js("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)")
+            time.sleep(.4)
+            check(js("return !!document.querySelector('#r11TeacherAdvanced button')"),'teacher advanced button missing')
+            js("document.querySelector('#r11TeacherAdvanced button').click()")
+            time.sleep(.5)
+            state=js("const h=document.getElementById('r19ProfessionalHost'),a=h?.querySelector('.app'),r=a?.getBoundingClientRect();return {open:document.documentElement.classList.contains('r19-professional-active'),hidden:h?.hidden,width:r?.width||0,height:r?.height||0,step:[...h.querySelectorAll('section.step')].findIndex(s=>getComputedStyle(s).display!=='none')+1}")
+            print('PRO_OPEN',json.dumps(state,ensure_ascii=False))
+            check(state['open'] and not state['hidden'] and state['width']>700 and state['height']>500,'professional form did not visibly open')
+            check(state['step']==1,'professional form did not start on step 1')
+
+            required=['move','setStep','openHomeV7','closeHomeV7','openTeacherProfileV6','closeTeacherProfileV6','openSettingsV9','closeSettingsV9','saveCurrentToLibraryV7','toggleAdaptiveV6','applyDefaults','saveProjectFile','newProjectV7','undoV8','redoV8','runQualityCheck','previewMD','prepareForAIV7','toggleGuidesV6','closeModal','setOutputTarget','downloadActiveMD','copyOutput','downloadTXT','downloadJSON','printSummary','closeQualityModal','jumpToFirstIssue','qualityProceed','closeSummaryV8','exportAfterSummaryV8','closeSuggestV6','saveTeacherProfileV6','saveSettingsV9','startProfessional']
+            types=js("const names=arguments[0],o={};for(const n of names)o[n]=typeof window[n];return o",required)
+            missing=[k for k,v in types.items() if v!='function']
+            print('GLOBALS',json.dumps(types,ensure_ascii=False))
+            check(not missing,'missing professional globals: '+','.join(missing))
+
+            # Next button must traverse all 10 steps.
+            js("setStep(0)")
+            for expected in range(2,11):
+              js("document.getElementById('nextBtn').click()")
+              time.sleep(.06)
+              got=visible_step(); print('NEXT',expected,got)
+              check(got==expected,f'next button expected step {expected}, got {got}')
+
+            # On last step, next opens preview instead of silently doing nothing.
+            js("document.getElementById('nextBtn').click()")
+            time.sleep(.1)
+            check(modal_open('modal'),'next on final step did not open preview')
+            js("closeModal()")
+
+            # Previous button traverses back to 1.
+            for expected in range(9,0,-1):
+              js("document.getElementById('prevBtn').click()")
+              time.sleep(.05)
+              got=visible_step(); print('PREV',expected,got)
+              check(got==expected,f'previous button expected step {expected}, got {got}')
+
+            # Sidebar step buttons 1..10.
+            for i in range(10):
+              js("document.querySelectorAll('#r19ProfessionalHost button.nav-item')[arguments[0]].click()",i)
+              time.sleep(.04)
+              got=visible_step(); print('NAV',i+1,got)
+              check(got==i+1,f'sidebar step {i+1} did not activate')
+
+            # Home / projects overlay opens and closes.
+            js("openHomeV7()")
+            time.sleep(.08)
+            home=js("const e=document.getElementById('homeOverlayV7');return {cls:e.className,display:getComputedStyle(e).display}")
+            print('HOME',json.dumps(home,ensure_ascii=False))
+            check('v7-home-open' in home['cls'] and home['display']!='none','home/projects overlay did not open')
+            js("closeHomeV7()")
+            check(not js("return document.getElementById('homeOverlayV7').classList.contains('v7-home-open')"),'home/projects overlay did not close')
+
+            # Teacher profile modal.
+            js("openTeacherProfileV6()")
+            time.sleep(.05); check(modal_open('profileModalV6'),'teacher profile modal did not open')
+            js("closeTeacherProfileV6()"); check(not modal_open('profileModalV6'),'teacher profile modal did not close')
+
+            # Settings modal and every settings tab.
+            js("openSettingsV9()")
+            time.sleep(.05); check(modal_open('settingsModalV9'),'settings modal did not open')
+            tabs=js("return document.querySelectorAll('#settingsModalV9 .v91-settings-tab').length")
+            check(tabs>=4,'settings tabs missing')
+            for i in range(tabs):
+              js("document.querySelectorAll('#settingsModalV9 .v91-settings-tab')[arguments[0]].click()",i)
+              time.sleep(.02)
+              active=js("return [...document.querySelectorAll('#settingsModalV9 .v91-settings-tab')].findIndex(x=>x.classList.contains('active'))",)
+              check(active==i,f'settings tab {i+1} did not activate')
+            js("closeSettingsV9()"); check(not modal_open('settingsModalV9'),'settings modal did not close')
+
+            # Defaults must populate an empty known field.
+            js("const e=document.getElementById('web_policy');if(e)e.value='';applyDefaults(false)")
+            check(bool(js("return document.getElementById('web_policy')?.value||''")),'applyDefaults did not populate web_policy')
+
+            # Adaptive and guide toggles must change their labels/state without throwing.
+            before=js("return document.getElementById('adaptiveBtnV6')?.textContent||''")
+            js("toggleAdaptiveV6()")
+            after=js("return document.getElementById('adaptiveBtnV6')?.textContent||''")
+            check(before!=after,'adaptive toggle did not change state')
+            g1=js("return document.getElementById('guidesBtnV6')?.textContent||''")
+            js("toggleGuidesV6()")
+            g2=js("return document.getElementById('guidesBtnV6')?.textContent||''")
+            check(g1!=g2,'guides toggle did not change state')
+
+            # Preview and all output-target tabs.
+            js("previewMD()")
+            time.sleep(.05); check(modal_open('modal'),'preview modal did not open')
+            preview_len=js("return (document.getElementById('preview')?.textContent||'').length")
+            check(preview_len>100,'preview output is unexpectedly empty')
+            for target in ['chatgpt','gemini','notebooklm','generic']:
+              js("setOutputTarget(arguments[0])",target)
+              check(js("return !!document.querySelector('[data-output-target=\"'+arguments[0]+'\"].active')",target),f'output target {target} did not activate')
+            js("closeModal()")
+
+            # Quality check modal.
+            js("runQualityCheck()")
+            time.sleep(.05); check(modal_open('qualityModal'),'quality modal did not open')
+            score=js("return document.getElementById('qualityScore')?.textContent||''")
+            check(bool(score.strip()),'quality score missing')
+            js("closeQualityModal()")
+
+            # One-click AI preparation must open either quality gate or summary.
+            js("prepareForAIV7()")
+            time.sleep(.08)
+            ai_gate=modal_open('qualityModal') or modal_open('summaryModalV8') or modal_open('modal')
+            check(ai_gate,'prepare for AI produced no visible result')
+            js("try{closeQualityModal()}catch(e){};try{closeSummaryV8()}catch(e){};try{closeModal()}catch(e){}")
+
+            # Save to project library without interactive prompt.
+            js("window.prompt=()=> 'E2E project'; saveCurrentToLibraryV7(false)")
+            time.sleep(.03)
+
+            # Undo/redo functions should execute without ReferenceError.
+            js("undoV8(); redoV8()")
+
+            # Return to RAVAN workspace.
+            js("document.getElementById('r19ProfessionalBack').click()")
+            time.sleep(.08)
+            returned=js("const h=document.getElementById('r19ProfessionalHost'),w=document.getElementById('r11Workspace');return {active:document.documentElement.classList.contains('r19-professional-active'),hostHidden:h.hidden,workspace:getComputedStyle(w).display,open:w.classList.contains('open')}")
+            print('RETURN',json.dumps(returned,ensure_ascii=False))
+            check(not returned['active'] and returned['hostHidden'] and returned['workspace']!='none' and returned['open'],'return to RAVAN workspace failed')
+
+            logs=d.get_log('browser')
+            bad=[]
+            for row in logs:
+              print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
+              msg=row.get('message','')
+              if row.get('level')=='SEVERE' and 'favicon.ico' not in msg:
+                bad.append(msg)
+            check(not bad,'severe browser console errors: '+' | '.join(bad[:5]))
+
+            if failures:
+              print('ASSERT_FAIL',json.dumps(failures,ensure_ascii=False));sys.exit(1)
+            print('ASSERT_PASS full RAVAN professional control regression')
+          finally:
+            d.quit()
+          PY
