@@ -43,6 +43,7 @@ jobs:
             js("localStorage.setItem('RAVAN_AI_RecentProfiles_v11',arguments[0]);localStorage.setItem('ravan_shell_prefs_v19',JSON.stringify({confirmDelete:false}));",json.dumps(seed,ensure_ascii=False))
             d.refresh();wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
             wait.until(lambda x:x.execute_script("return document.documentElement.dataset.ravanProfileManagement==='19.22'"))
+            wait.until(lambda x:x.execute_script("return document.querySelectorAll('#r11SavedProfiles .r11-pill').length===3"))
             js("document.querySelector('.r19-navitem[data-nav-index=\"1\"]').click()")
             wait.until(lambda x:x.execute_script("return document.querySelectorAll('[data-profile-open]').length===3"))
             wait.until(lambda x:x.execute_script("return document.querySelectorAll('[data-profile-delete]').length===3 && !!document.querySelector('[data-profile-clear]')"))
