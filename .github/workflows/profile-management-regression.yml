@@ -1,0 +1,74 @@
+name: RAVAN recent profile management regression
+on:
+  push:
+    paths:
+      - 'ravan-profile-management-v19.js'
+      - 'ravan-sections-v19.js'
+      - 'index.html'
+      - '.github/workflows/profile-management-regression.yml'
+permissions:
+  contents: read
+jobs:
+  chrome-profile-management:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Verify individual and bulk recent-profile deletion
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.support import expected_conditions as EC
+          import json,sys,time
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs',{'browser':'ALL'})
+          d=webdriver.Chrome(options=o);wait=WebDriverWait(d,25);fail=[]
+          def js(code,*args): return d.execute_script(code,*args)
+          def check(cond,msg):
+            if not cond: fail.append(msg)
+          try:
+            d.get('http://127.0.0.1:8765/?profile-regression=19.22')
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
+            seed=[
+              {'role':'teacher','roleLabel':'معلم','task':'quiz','taskLabel':'آزمون و ارزشیابی','ai':'chatgpt','goal':''},
+              {'role':'researcher','roleLabel':'پژوهشگر','task':'research','taskLabel':'گزارش پژوهشی','ai':'notebooklm','goal':''},
+              {'role':'manager','roleLabel':'مدیر','task':'plan','taskLabel':'برنامه‌ریزی پروژه','ai':'chatgpt','goal':''}
+            ]
+            js("localStorage.setItem('RAVAN_AI_RecentProfiles_v11',arguments[0]);localStorage.setItem('ravan_shell_prefs_v19',JSON.stringify({confirmDelete:false}));",json.dumps(seed,ensure_ascii=False))
+            d.refresh();wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
+            wait.until(lambda x:x.execute_script("return document.documentElement.dataset.ravanProfileManagement==='19.22'"))
+            js("document.querySelector('.r19-navitem[data-nav-index=\"1\"]').click()")
+            wait.until(lambda x:x.execute_script("return document.querySelectorAll('[data-profile-open]').length===3"))
+            wait.until(lambda x:x.execute_script("return document.querySelectorAll('[data-profile-delete]').length===3 && !!document.querySelector('[data-profile-clear]')"))
+            check(js("return document.querySelectorAll('#r11SavedProfiles .r11-pill').length") == 3,'core recent-profile pills were not seeded')
+            check(js("return document.querySelector('[data-profile-clear]').textContent.trim()")=='حذف همه','bulk delete control missing')
+
+            js("window.confirm=()=>true;document.querySelector('[data-profile-delete=\"0\"]').click()")
+            wait.until(lambda x:x.execute_script("return JSON.parse(localStorage.getItem('RAVAN_AI_RecentProfiles_v11')||'[]').length===2"))
+            wait.until(lambda x:x.execute_script("return document.querySelectorAll('[data-profile-delete]').length===2"))
+            check(js("return document.querySelectorAll('#r11SavedProfiles .r11-pill').length") == 2,'core recent-profile pills did not sync after single delete')
+            remaining=js("return JSON.parse(localStorage.getItem('RAVAN_AI_RecentProfiles_v11')||'[]').map(x=>x.roleLabel)")
+            check(remaining==['پژوهشگر','مدیر'],f'wrong profile removed: {remaining}')
+
+            js("document.querySelector('[data-profile-clear]').click()")
+            wait.until(lambda x:x.execute_script("return !localStorage.getItem('RAVAN_AI_RecentProfiles_v11')"))
+            wait.until(lambda x:x.execute_script("return document.querySelectorAll('[data-profile-delete]').length===0 && !document.querySelector('[data-profile-clear]')"))
+            check(js("return document.querySelectorAll('#r11SavedProfiles .r11-pill').length") == 0,'core recent-profile pills did not clear')
+            check('پروفایل اخیری ندارید' in js("return document.querySelector('.r19-section-body').innerText"),'empty state missing after clear all')
+
+            logs=d.get_log('browser');bad=[]
+            for row in logs:
+              if row.get('level')=='SEVERE' and 'favicon.ico' not in row.get('message',''): bad.append(row.get('message',''))
+            check(not bad,'severe browser errors: '+' | '.join(bad[:5]))
+            if fail:
+              print('ASSERT_FAIL',json.dumps(fail,ensure_ascii=False));sys.exit(1)
+            print('ASSERT_PASS recent profile delete + clear all')
+          finally:
+            d.quit()
+          PY
