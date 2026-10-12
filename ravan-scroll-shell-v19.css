@@ -1,4 +1,4 @@
-/* RAVAN AI v19.23 — viewport shell with independently scrolling center content */
+/* RAVAN AI v19.24 — viewport shell with independently scrolling center content */
 
 /* Tablet and desktop: keep global chrome in place and let only the content
    column move vertically. This applies to builder, workspace and utility pages. */
@@ -71,20 +71,27 @@
   .r19-context::-webkit-scrollbar-thumb{background:#c7c9d9;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
 }
 
-/* Between tablet and desktop the context summary occupies its own row. Keep it
-   fixed in that row and dedicate the remaining height to the scrolling center. */
+/* Between tablet and desktop the context summary occupies a compact fixed row.
+   The center gets the exact remaining viewport height and is the sole page
+   scroll container, matching the desktop interaction without squeezing content. */
 @media (min-width:768px) and (max-width:1199px){
+  :root{--r19-tablet-context-height:180px}
   .r19-app{
-    grid-template-rows:var(--header-height) auto minmax(0,1fr)!important;
+    grid-template-rows:var(--header-height) var(--r19-tablet-context-height) minmax(0,1fr)!important;
   }
   .r19-context{
-    max-height:min(220px,32vh)!important;
+    box-sizing:border-box!important;
+    height:var(--r19-tablet-context-height)!important;
+    min-height:var(--r19-tablet-context-height)!important;
+    max-height:var(--r19-tablet-context-height)!important;
     overflow-y:auto!important;
   }
   .r19-main{
-    height:auto!important;
-    max-height:none!important;
+    box-sizing:border-box!important;
+    height:calc(100vh - var(--header-height) - var(--r19-tablet-context-height))!important;
     min-height:0!important;
+    max-height:calc(100vh - var(--header-height) - var(--r19-tablet-context-height))!important;
+    overflow-x:hidden!important;
     overflow-y:auto!important;
   }
 }
