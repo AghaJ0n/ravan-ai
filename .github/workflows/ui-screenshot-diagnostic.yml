@@ -22,13 +22,19 @@ jobs:
           from selenium.webdriver.support.ui import WebDriverWait
           from selenium.webdriver.common.by import By
           from selenium.webdriver.support import expected_conditions as EC
-          import time
+          import time,json
           o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
           d=webdriver.Chrome(options=o)
           try:
             d.get('http://127.0.0.1:8765/?screenshot=19.20')
             WebDriverWait(d,20).until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
             time.sleep(1)
+            state=d.execute_script("""
+              const pick=s=>{const e=document.querySelector(s);if(!e)return null;const r=e.getBoundingClientRect(),c=getComputedStyle(e);return {s,rect:[r.x,r.y,r.width,r.height],pos:c.position,z:c.zIndex,display:c.display,opacity:c.opacity,visibility:c.visibility,transform:c.transform};};
+              const pts=[[1640,100],[1600,300],[100,100],[825,100]];
+              return {nav:pick('.r19-nav'),top:pick('.r19-topbar'),gate:pick('.r11-gate'),main:pick('.r19-main'),ctx:pick('.r19-context'),points:pts.map(([x,y])=>{const e=document.elementFromPoint(x,y);return [x,y,e?.tagName||'',e?.className||'',e?.id||''];})};
+            """)
+            print('VISUAL_STATE',json.dumps(state,ensure_ascii=False))
             d.save_screenshot('ravan-ui-19.20.png')
           finally:
             d.quit()
