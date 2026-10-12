@@ -32,9 +32,10 @@ jobs:
               if(!el)return null; el.click(); return el.textContent.trim();
             """,selector,text)
           try:
-            d.get('http://127.0.0.1:8765/?diag=real-19.12')
+            d.get('http://127.0.0.1:8765/?diag=real-19.13')
             time.sleep(2)
             print('UI',d.execute_script("return document.documentElement.dataset.ravanUi||''"))
+            print('BRIDGE',d.execute_script("return document.documentElement.dataset.ravanBridgeLoaded||''"))
             print('ROLE_CLICK',click_contains('.r112-role-option','معلم'))
             time.sleep(.3)
             print('NEXT1',click_contains('button','مرحله بعد'))
