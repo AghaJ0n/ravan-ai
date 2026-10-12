@@ -1,0 +1,101 @@
+name: RAVAN center scroll regression
+on:
+  push:
+    paths:
+      - 'ravan-scroll-shell-v19.css'
+      - 'ravan-layout-v19.css'
+      - 'ravan-navigation-v19.css'
+      - 'index.html'
+      - '.github/workflows/center-scroll-regression.yml'
+permissions:
+  contents: read
+jobs:
+  chrome-center-scroll:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Verify center-only scrolling across responsive layouts
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-scroll-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.support import expected_conditions as EC
+          import json,sys,time
+
+          def browser(width,height):
+            o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument(f'--window-size={width},{height}')
+            o.set_capability('goog:loggingPrefs',{'browser':'ALL'})
+            return webdriver.Chrome(options=o)
+
+          failures=[]
+          def check(cond,msg):
+            if not cond: failures.append(msg)
+
+          # Desktop: header, right nav and left context must stay put while main scrolls.
+          d=browser(1650,930)
+          try:
+            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.23')
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-main')))
+            js=d.execute_script
+            check(js("return getComputedStyle(document.body).overflowY")=='hidden','desktop body should not scroll')
+            check(js("return ['auto','scroll'].includes(getComputedStyle(document.querySelector('.r19-main')).overflowY)"),'desktop main is not the scroll container')
+            before=js("return {top:document.querySelector('.r19-topbar').getBoundingClientRect().top,nav:document.querySelector('.r19-nav').getBoundingClientRect().top,ctx:document.querySelector('.r19-context').getBoundingClientRect().top,body:document.scrollingElement.scrollTop}")
+            js("const m=document.querySelector('.r19-main');const s=document.createElement('div');s.id='scroll-test-spacer';s.style.height='1800px';m.appendChild(s);m.scrollTop=720")
+            time.sleep(.25)
+            after=js("return {main:document.querySelector('.r19-main').scrollTop,top:document.querySelector('.r19-topbar').getBoundingClientRect().top,nav:document.querySelector('.r19-nav').getBoundingClientRect().top,ctx:document.querySelector('.r19-context').getBoundingClientRect().top,body:document.scrollingElement.scrollTop}")
+            check(after['main']>600,'desktop main did not scroll independently')
+            check(abs(after['top']-before['top'])<1,'desktop topbar moved during center scroll')
+            check(abs(after['nav']-before['nav'])<1,'desktop right navigation moved during center scroll')
+            check(abs(after['ctx']-before['ctx'])<1,'desktop left context moved during center scroll')
+            check(after['body']==before['body']==0,'desktop document scrolled instead of center')
+
+            # All five utility destinations must retain the same center scroll contract.
+            for idx,name in [(1,'projects'),(2,'templates'),(3,'library'),(4,'history'),(5,'settings')]:
+              js(f"document.querySelector('.r19-navitem[data-nav-index=\"{idx}\"]').click()")
+              wait.until(lambda x:x.execute_script("return !!document.querySelector('.r19-utility-view.open')"))
+              check(js("return ['auto','scroll'].includes(getComputedStyle(document.querySelector('.r19-main')).overflowY)"),f'{name}: main lost scrolling behavior')
+              check(abs(js("return document.querySelector('.r19-nav').getBoundingClientRect().top")-before['nav'])<1,f'{name}: nav moved')
+
+            bad=[x['message'] for x in d.get_log('browser') if x.get('level')=='SEVERE' and 'favicon.ico' not in x.get('message','')]
+            check(not bad,'desktop severe browser errors: '+' | '.join(bad[:3]))
+          finally:
+            d.quit()
+
+          # Tablet: center remains independently scrollable while narrow nav stays anchored.
+          d=browser(1024,850)
+          try:
+            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.23-tablet')
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
+            js=d.execute_script
+            check(js("return getComputedStyle(document.body).overflowY")=='hidden','tablet body should not scroll')
+            nav0=js("return document.querySelector('.r19-nav').getBoundingClientRect().top")
+            js("const m=document.querySelector('.r19-main');const s=document.createElement('div');s.style.height='1500px';m.appendChild(s);m.scrollTop=500")
+            time.sleep(.2)
+            check(js("return document.querySelector('.r19-main').scrollTop")>400,'tablet main did not scroll')
+            check(abs(js("return document.querySelector('.r19-nav').getBoundingClientRect().top")-nav0)<1,'tablet nav moved during center scroll')
+          finally:
+            d.quit()
+
+          # Phone: preserve natural document scrolling and avoid nested-scroll traps.
+          d=browser(390,844)
+          try:
+            wait=WebDriverWait(d,25);d.get('http://127.0.0.1:8765/?scroll-regression=19.23-mobile')
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
+            js=d.execute_script
+            check(js("return getComputedStyle(document.body).overflowY") in ('auto','visible'),'mobile body should retain natural scrolling')
+            check(js("return getComputedStyle(document.querySelector('.r19-main')).overflowY")=='visible','mobile main should not create nested vertical scrolling')
+            check(js("return getComputedStyle(document.querySelector('.r19-nav')).position")=='fixed','mobile bottom navigation should remain fixed')
+          finally:
+            d.quit()
+
+          if failures:
+            print('ASSERT_FAIL',json.dumps(failures,ensure_ascii=False));sys.exit(1)
+          print('ASSERT_PASS center-only scrolling responsive layout')
+          PY
