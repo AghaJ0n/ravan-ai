@@ -54,7 +54,7 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
     let legacyMatch=null,m;
     while((m=legacyRe.exec(html))){
       const code=m[1]||'';
-      if(code.includes('function move(')&&code.includes('function openHomeV7(')&&code.includes('function previewMD(')){
+      if(code.includes('function move(')&&code.includes('function openHomeV7(')&&code.includes('function previewMD('))){
         legacyMatch={full:m[0],code,index:m.index};
         break;
       }
@@ -70,8 +70,8 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
       console.error('[RAVAN] legacy runtime block was not found');
     }
 
-    const styles='<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.17"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.17"><link rel="stylesheet" href="ravan-components-v19.css?v=19.17"><link rel="stylesheet" href="ravan-sections-v19.css?v=19.17"><link rel="stylesheet" href="ravan-navigation-v19.css?v=19.19">';
-    const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.17"><\/script><script src="ravan-ui-v19.js?v=19.17"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.19"><\/script>';
+    const styles='<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.17"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.17"><link rel="stylesheet" href="ravan-components-v19.css?v=19.17"><link rel="stylesheet" href="ravan-sections-v19.css?v=19.17"><link rel="stylesheet" href="ravan-navigation-v19.css?v=19.20">';
+    const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.17"><\/script><script src="ravan-ui-v19.js?v=19.17"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.20"><\/script>';
     html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
     document.open(); document.write(html); document.close();
   } catch(e) {
