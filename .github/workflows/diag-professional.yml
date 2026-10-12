@@ -1,0 +1,29 @@
+name: Diagnose professional form
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/diag-professional.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect legacy professional button
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),vm=require('vm'),zlib=require('zlib');
+          const ctx={window:{}};ctx.window.window=ctx.window;vm.createContext(ctx);
+          for(const f of ['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js']) vm.runInContext(fs.readFileSync(f,'utf8'),ctx,{filename:f});
+          const html=zlib.gunzipSync(Buffer.from(ctx.window.__RAVAN_B64||'','base64')).toString('utf8');
+          const terms=['ورود به فرم حرفه‌ای آموزشی','فرم حرفه‌ای آموزشی','حرفه‌ای آموزشی','professional'];
+          for(const term of terms){
+            let i=html.indexOf(term); console.log('\nTERM',term,'INDEX',i);
+            if(i>=0) console.log(html.slice(Math.max(0,i-2200),Math.min(html.length,i+4200)));
+          }
+          const funcs=[...html.matchAll(/function\s+([A-Za-z0-9_$]+)\s*\([^)]*\)\s*\{/g)].map(m=>m[1]);
+          console.log('\nFUNCTIONS_AROUND_EDU',funcs.filter(x=>/edu|teach|pro|legacy|form/i.test(x)).join('\n'));
+          NODE
