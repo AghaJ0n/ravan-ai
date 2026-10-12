@@ -10,37 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Rebuild legacy HTML and compile scripts
+      - name: Locate missing legacy functions
         shell: bash
         run: |
           node <<'NODE'
           const fs=require('fs'),zlib=require('zlib');
           const files=['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js'];
-          let b64='';
-          for(const f of files){
-            const s=fs.readFileSync(f,'utf8');
-            const m=s.match(/\+\"([A-Za-z0-9+/=]+)\"\s*;?\s*$/s);
-            if(!m) throw new Error('payload parse failed '+f);
-            b64+=m[1];
-          }
+          let b64='';for(const f of files){const s=fs.readFileSync(f,'utf8');const m=s.match(/\+\"([A-Za-z0-9+/=]+)\"\s*;?\s*$/s);if(!m)throw new Error(f);b64+=m[1];}
           const html=zlib.gunzipSync(Buffer.from(b64,'base64')).toString('utf8');
-          console.log('HTML_LENGTH',html.length,'LINES',html.split('\n').length);
-          fs.writeFileSync('/tmp/legacy.html',html);
-          const re=/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi;
-          let m,i=0,failed=0;
-          while((m=re.exec(html))){
-            i++;
-            const code=m[1];
-            if(!code.trim()) continue;
-            try{ new Function(code); console.log('SCRIPT_OK',i,'len',code.length); }
-            catch(e){
-              failed++;
-              console.log('SCRIPT_FAIL',i,'len',code.length,e.name,e.message);
-              const lines=code.split('\n');
-              console.log('SCRIPT_LINES',lines.length);
-              for(let n=Math.max(0,lines.length-12);n<lines.length;n++) console.log(String(n+1).padStart(4,'0')+': '+lines[n].slice(0,1000));
-              console.log('TAIL',JSON.stringify(code.slice(-3000)));
-            }
+          const scripts=[]; for(const m of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) scripts.push(m[1]);
+          const names=['move','setStep','openHomeV7','openTeacherProfileV6','openSettingsV9','saveCurrentToLibraryV7','toggleAdaptiveV6','applyDefaults','saveProjectFile','newProjectV7','undoV8','redoV8','runQualityCheck','previewMD','prepareForAIV7','toggleGuidesV6','closeModal','setOutputTarget','downloadActiveMD','copyOutput','downloadTXT','downloadJSON','printSummary','closeQualityModal','jumpToFirstIssue','qualityProceed','closeSummaryV8','exportAfterSummaryV8','closeSuggestV6','saveTeacherProfileV6','saveSettingsV9','startProfessional'];
+          console.log('SCRIPT_COUNT',scripts.length,scripts.map(s=>s.length));
+          for(const n of names){
+            const hits=[];
+            scripts.forEach((s,i)=>{let p=s.indexOf('function '+n); if(p<0)p=s.indexOf(n+'='); if(p<0)p=s.indexOf(n+' ='); if(p<0)p=s.indexOf(n+'('); if(p>=0) hits.push({script:i+1,pos:p,snippet:s.slice(Math.max(0,p-120),p+320).replace(/\n/g,' ↵ ')});});
+            console.log('FUNC',n,JSON.stringify(hits));
           }
-          console.log('SCRIPTS',i,'FAILED',failed);
           NODE
