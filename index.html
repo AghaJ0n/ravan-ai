@@ -54,7 +54,7 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
     let legacyMatch=null,m;
     while((m=legacyRe.exec(html))){
       const code=m[1]||'';
-      if(code.includes('function move(')&&code.includes('function openHomeV7(')&&code.includes('function previewMD('))){
+      if(code.includes('function move(')&&code.includes('function openHomeV7(')&&code.includes('function previewMD(')){
         legacyMatch={full:m[0],code,index:m.index};
         break;
       }
