@@ -19,34 +19,50 @@ jobs:
           python - <<'PY'
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
-          import json,time
+          import json,time,re
           o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
           o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
           d=webdriver.Chrome(options=o)
           try:
-            d.get('http://127.0.0.1:8765/?diag=all-controls')
+            d.get('http://127.0.0.1:8765/?diag=all-controls-2')
             time.sleep(2)
             d.execute_script("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)")
             time.sleep(.5)
             d.execute_script("document.querySelector('#r11TeacherAdvanced button').click()")
             time.sleep(.5)
-            data=d.execute_script(r'''return (()=>{
+            report=d.execute_script(r'''return (()=>{
               const h=document.getElementById('r19ProfessionalHost');
               const vis=e=>!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length);
-              const btns=[...h.querySelectorAll('button')].filter(vis).map((b,i)=>({i,text:(b.innerText||'').trim(),id:b.id||'',cls:b.className||'',onclick:b.getAttribute('onclick')||'',disabled:b.disabled,aria:b.getAttribute('aria-label')||''}));
-              const panels=[...h.querySelectorAll('[id],[class]')].filter(e=>/step|stage|section|panel/i.test((e.id||'')+' '+(e.className||''))).map(e=>({tag:e.tagName,id:e.id||'',cls:String(e.className||''),display:getComputedStyle(e).display,hidden:e.hidden,text:(e.innerText||'').trim().slice(0,100)})).slice(0,160);
-              const globals=['setStep','nextStep','prevStep','goNext','goPrev','renderStep','updateStep','validateStep'].reduce((a,k)=>(a[k]=typeof window[k],a),{});
-              return {buttons:btns,panels,globals,bodyClass:document.body.className,htmlClass:document.documentElement.className};
+              const btns=[...h.querySelectorAll('button')].filter(vis).map((b,i)=>({i,text:(b.innerText||'').trim(),id:b.id||'',cls:b.className||'',onclick:b.getAttribute('onclick')||''}));
+              const names=[...new Set(btns.flatMap(b=>[...b.onclick.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)].map(m=>m[1])).filter(n=>!['getElementById'].includes(n)))];
+              const globals={}; for(const n of names) globals[n]=typeof window[n];
+              for(const n of ['move','setStep','updateStep','validateStep','renderSummary','updateProgress','saveDraft']) globals[n]=typeof window[n];
+              const steps=[...h.querySelectorAll('section.step')].map((e,i)=>({i,id:e.id,display:getComputedStyle(e).display,active:e.classList.contains('active')}));
+              const navs=[...h.querySelectorAll('button.nav-item')].map((b,i)=>({i,text:(b.innerText||'').trim(),active:b.classList.contains('active')}));
+              return {btns,globals,steps,navs};
             })()''')
-            print('DIAG',json.dumps(data,ensure_ascii=False))
-            # exercise every visible button whose label is next/previous or contains a step number
-            nav=d.execute_script(r'''return (()=>{
-              const h=document.getElementById('r19ProfessionalHost');
-              const vis=e=>!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length);
-              const labels=['مرحله بعد','مرحله قبل','بعدی','قبلی'];
-              return [...h.querySelectorAll('button')].filter(b=>vis(b)&&labels.some(x=>(b.innerText||'').includes(x))).map(b=>({text:(b.innerText||'').trim(),html:b.outerHTML.slice(0,500)}));
-            })()''')
-            print('NAV',json.dumps(nav,ensure_ascii=False))
+            print('REPORT',json.dumps(report,ensure_ascii=False))
+            # Click nav items 1..10 and capture which section becomes active/visible.
+            nav_results=[]
+            for i in range(10):
+              r=d.execute_script(r'''const h=document.getElementById('r19ProfessionalHost'); const b=h.querySelectorAll('button.nav-item')[arguments[0]]; b.click(); return {clicked:arguments[0]+1, active:[...h.querySelectorAll('section.step')].findIndex(s=>s.classList.contains('active'))+1, visible:[...h.querySelectorAll('section.step')].findIndex(s=>getComputedStyle(s).display!=='none')+1};''',i)
+              nav_results.append(r)
+            print('NAV_RESULTS',json.dumps(nav_results,ensure_ascii=False))
+            # Reset to step 1, click next and previous using DOM click and report transition/errors.
+            d.execute_script("document.querySelector('#r19ProfessionalHost button.nav-item').click()")
+            time.sleep(.1)
+            transitions=[]
+            for label,sel in [('next','#nextBtn'),('prev','#prevBtn')]:
+              before=d.execute_script("return [...document.querySelectorAll('#r19ProfessionalHost section.step')].findIndex(s=>getComputedStyle(s).display!=='none')+1")
+              try:
+                d.execute_script("document.querySelector(arguments[0]).click()", '#r19ProfessionalHost '+sel)
+                status='clicked'
+              except Exception as e:
+                status=type(e).__name__+':'+str(e).split('\n')[0]
+              time.sleep(.1)
+              after=d.execute_script("return [...document.querySelectorAll('#r19ProfessionalHost section.step')].findIndex(s=>getComputedStyle(s).display!=='none')+1")
+              transitions.append({'label':label,'before':before,'after':after,'status':status})
+            print('TRANSITIONS',json.dumps(transitions,ensure_ascii=False))
             for row in d.get_log('browser'): print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
           finally:d.quit()
           PY
