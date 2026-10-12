@@ -1,0 +1,62 @@
+name: RAVAN section guides regression
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'ravan-section-guides-v19.js'
+      - 'ravan-sections-v19.js'
+      - '.github/workflows/section-guides-regression.yml'
+permissions:
+  contents: read
+jobs:
+  chrome-guides:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Verify all contextual section guides
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import json,time,sys
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o); failures=[]
+          def js(code,*args): return d.execute_script(code,*args)
+          def check(cond,msg):
+            if not cond: failures.append(msg)
+          try:
+            d.get('http://127.0.0.1:8765/?guide-e2e=19.18');time.sleep(2.5)
+            boot=js("return {v:window.RAVAN_SECTION_GUIDES?.version||'',nav:document.querySelectorAll('.r19-navitem').length}")
+            print('BOOT',json.dumps(boot,ensure_ascii=False));check(boot['v']=='19.18','guide module not loaded');check(boot['nav']>=6,'sidebar nav incomplete')
+            expected=[
+              (1,'پروژه‌های من','projects'),
+              (2,'قالب‌ها','templates'),
+              (3,'کتابخانه','library'),
+              (4,'تاریخچه','history'),
+              (5,'تنظیمات','settings')
+            ]
+            for idx,title,key in expected:
+              js("document.querySelector('.r19-navitem[data-nav-index=\"'+arguments[0]+'\"]').click()",str(idx));time.sleep(.12)
+              state=js("const v=document.querySelector('.r19-section-view'),g=v?.querySelector('.r19-section-guide');return {title:v?.querySelector('h2')?.textContent.trim()||'',key:g?.dataset.r19Guide||'',steps:g?.querySelectorAll('.r19-guide-step').length||0,tip:(g?.querySelector('.r19-guide-tip')?.textContent||'').trim(),intro:(g?.querySelector('.r19-section-guide-intro')?.textContent||'').trim(),badge:(g?.querySelector('.r19-guide-badge')?.textContent||'').trim()}")
+              print('GUIDE',idx,json.dumps(state,ensure_ascii=False))
+              check(state['title']==title,f'{title}: page title mismatch')
+              check(state['key']==key,f'{title}: contextual guide missing/wrong')
+              check(state['steps']==3,f'{title}: expected 3 guide steps')
+              check(len(state['intro'])>40,f'{title}: intro is too short')
+              check('نکته' in state['tip'],f'{title}: tip missing')
+              check(state['badge']=='راهنمای سریع',f'{title}: quick guide badge missing')
+            logs=d.get_log('browser');bad=[]
+            for row in logs:
+              print('BROWSER_LOG',json.dumps(row,ensure_ascii=False));msg=row.get('message','')
+              if row.get('level')=='SEVERE' and 'favicon.ico' not in msg: bad.append(msg)
+            check(not bad,'severe browser console errors: '+' | '.join(bad[:5]))
+            if failures:
+              print('ASSERT_FAIL',json.dumps(failures,ensure_ascii=False));sys.exit(1)
+            print('ASSERT_PASS all contextual section guides')
+          finally:d.quit()
+          PY
