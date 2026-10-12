@@ -1,4 +1,4 @@
-/* RAVAN AI v19.15 — restore Core workspace, legacy globals and professional teacher form */
+/* RAVAN AI v19.16 — restore Core workspace, recovered legacy globals and professional teacher form */
 (()=>{
 'use strict';
 
@@ -12,11 +12,12 @@ if(typeof window.toast!=='function'){
     console.info('[RAVAN]',message);
   };
 }
-document.documentElement.dataset.ravanBridgeLoaded='19.15';
+document.documentElement.dataset.ravanBridgeLoaded='19.16';
+document.documentElement.dataset.ravanLegacyRuntime=typeof window.move==='function'?'ready':'missing';
 
 const gate=document.querySelector('.r11-gate');
 
-/* Restore the Core workspace when the malformed legacy inline block prevented
+/* Restore the Core workspace when the legacy inline block prevented
    its late markup from materializing. */
 let workspace=document.getElementById('r11Workspace')||document.querySelector('.r11-workspace');
 let restored=false;
@@ -81,7 +82,12 @@ function closeLegacyOverlays(){
   const welcome=professionalHost.querySelector('#welcomeOverlay');
   const home=professionalHost.querySelector('#homeOverlayV7');
   if(welcome)welcome.style.display='none';
-  if(home){home.classList.remove('open');home.style.display='none'}
+  if(home){
+    home.classList.remove('v7-home-open','open');
+    /* Do not leave inline display:none here: openHomeV7 relies on its class to
+       make the overlay visible again later. */
+    home.style.removeProperty('display');
+  }
 }
 
 const originalTeacherAdvanced=typeof window.r11OpenTeacherAdvanced==='function'?window.r11OpenTeacherAdvanced:null;
