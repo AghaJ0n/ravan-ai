@@ -27,7 +27,7 @@ jobs:
           o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
           d=webdriver.Chrome(options=o)
           try:
-            d.get('http://127.0.0.1:8765/?diag=professional-19.14b')
+            d.get('http://127.0.0.1:8765/?diag=professional-19.15')
             time.sleep(2)
             d.execute_script("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)")
             time.sleep(1)
@@ -45,6 +45,7 @@ jobs:
             print('OPEN_STATE',json.dumps(state,ensure_ascii=False))
             d.save_screenshot('/tmp/professional-open.png')
             errors=[]
+            if state['bridge']!='19.15': errors.append('v19.15 bridge not loaded')
             if 'r19-professional-active' not in state['root']: errors.append('professional root state missing')
             if state['hostHidden'] or state['hostDisplay']=='none': errors.append('professional host hidden')
             if state['appDisplay']=='none' or state['appWidth']<700 or state['appHeight']<500: errors.append('legacy professional app not visibly rendered')
