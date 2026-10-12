@@ -1,0 +1,47 @@
+name: Diagnose workspace visual
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/diag-workspace-visual.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Selenium
+        run: python -m pip install -q selenium
+      - name: Inspect workspace after click
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          import time,json,os
+          o=Options(); o.add_argument('--headless=new'); o.add_argument('--no-sandbox'); o.add_argument('--disable-dev-shm-usage'); o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o)
+          try:
+            d.get('http://127.0.0.1:8765/?diag=visual')
+            time.sleep(2)
+            d.execute_script("r112PickRole('teacher'); r11Move(1); r115PickTask('assessment'); r11Move(1); selectAi('chatgpt')")
+            time.sleep(.2)
+            d.find_element(By.ID,'r11Next').click()
+            time.sleep(1)
+            print('WS',d.execute_script("var w=document.getElementById('r11Workspace'),s=w&&getComputedStyle(w);return w?{class:w.className,display:s.display,position:s.position,inset:[s.top,s.right,s.bottom,s.left],width:s.width,height:s.height,z:s.zIndex,rect:w.getBoundingClientRect().toJSON(),parent:w.parentElement&&w.parentElement.className,html:w.innerText.slice(0,700)}:null"))
+            print('MAIN',d.execute_script("var m=document.querySelector('.r19-main'),s=getComputedStyle(m);return {display:s.display,rect:m.getBoundingClientRect().toJSON(),children:[...m.children].map(x=>x.className)}"))
+            print('GATE',d.execute_script("var g=document.querySelector('.r11-gate'),s=getComputedStyle(g);return {display:s.display,rect:g.getBoundingClientRect().toJSON()}"))
+            d.save_screenshot('/tmp/workspace.png')
+            for row in d.get_log('browser'): print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
+          finally:d.quit()
+          PY
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-visual
+          path: /tmp/workspace.png
