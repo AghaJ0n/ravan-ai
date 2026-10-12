@@ -1,0 +1,99 @@
+name: RAVAN persistent navigation regression
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'ravan-navigation-v19.css'
+      - 'ravan-navigation-v19.js'
+      - 'ravan-layout-v19.css'
+      - 'ravan-ui-v19.js'
+      - 'ravan-sections-v19.js'
+      - 'ravan-core-bridge-v19.js'
+      - '.github/workflows/persistent-navigation-regression.yml'
+permissions:
+  contents: read
+jobs:
+  chrome-nav:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Verify persistent desktop and mobile navigation
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import json,time,sys
+
+          failures=[]
+          def check(cond,msg):
+            if not cond: failures.append(msg)
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o)
+          def js(code,*args): return d.execute_script(code,*args)
+          try:
+            d.get('http://127.0.0.1:8765/?nav-e2e=19.19');time.sleep(2.8)
+            boot=js("const n=document.querySelector('.r19-nav'),r=n?.getBoundingClientRect();return {v:document.documentElement.dataset.ravanPersistentNav||'',pos:getComputedStyle(n).position,display:getComputedStyle(n).display,top:r?.top||-1,right:innerWidth-(r?.right||0),width:r?.width||0,visible:[...document.querySelectorAll('.r19-navitem')].filter(x=>getComputedStyle(x).display!='none').length}")
+            print('DESKTOP_BOOT',json.dumps(boot,ensure_ascii=False))
+            check(boot['v']=='19.19','persistent nav module missing')
+            check(boot['pos']=='fixed','desktop navigation is not fixed')
+            check(boot['display']!='none' and boot['width']>=200,'desktop navigation is not visibly expanded')
+            check(boot['visible']==6,'desktop navigation does not expose build + five destinations')
+
+            # Sticky/fixed behavior must survive scrolling.
+            top0=boot['top'];js("window.scrollTo(0,1200)");time.sleep(.12)
+            top1=js("return document.querySelector('.r19-nav').getBoundingClientRect().top")
+            check(abs(top1-top0)<2,'navigation moved while page scrolled')
+            js("window.scrollTo(0,0)")
+
+            # Every requested section remains accessible while utility views swap.
+            expected=[(1,'پروژه‌های من'),(2,'قالب‌ها'),(3,'کتابخانه'),(4,'تاریخچه'),(5,'تنظیمات')]
+            for idx,title in expected:
+              js("document.querySelector('.r19-navitem[data-nav-index=\"'+arguments[0]+'\"]').click()",str(idx));time.sleep(.12)
+              state=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect(),v=document.querySelector('.r19-section-view');return {title:v?.querySelector('h2')?.textContent.trim()||'',pos:getComputedStyle(n).position,display:getComputedStyle(n).display,width:r.width,active:document.querySelector('.r19-navitem.active')?.dataset.navIndex||''}")
+              print('SECTION',idx,json.dumps(state,ensure_ascii=False))
+              check(state['title']==title,f'{title}: section did not open')
+              check(state['pos']=='fixed' and state['display']!='none' and state['width']>=200,f'{title}: persistent right nav disappeared')
+              check(state['active']==str(idx),f'{title}: active nav state wrong')
+
+            # Return to builder and enter professional teacher form.
+            js("window.RAVAN_UI.showBuilder(); r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)");time.sleep(.35)
+            js("document.querySelector('#r11TeacherAdvanced button').click()");time.sleep(.45)
+            prof=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect();return {active:document.documentElement.classList.contains('r19-professional-active'),display:getComputedStyle(n).display,pos:getComputedStyle(n).position,top:r.top,width:r.width}")
+            print('PROFESSIONAL',json.dumps(prof,ensure_ascii=False))
+            check(prof['active'],'professional mode did not open')
+            check(prof['display']!='none' and prof['pos']=='fixed' and prof['width']>=200,'navigation disappeared in professional mode')
+            check(abs(prof['top'])<2,'professional navigation is not pinned to top')
+
+            # Clicking a global destination from professional mode must safely leave it.
+            js("document.querySelector('.r19-navitem[data-nav-index=\"1\"]').click()");time.sleep(.25)
+            escaped=js("const n=document.querySelector('.r19-nav');return {professional:document.documentElement.classList.contains('r19-professional-active'),title:document.querySelector('.r19-section-view h2')?.textContent.trim()||'',display:getComputedStyle(n).display,pos:getComputedStyle(n).position}")
+            print('PROF_EXIT_NAV',json.dumps(escaped,ensure_ascii=False))
+            check(not escaped['professional'],'sidebar navigation did not exit professional mode')
+            check(escaped['title']=='پروژه‌های من','projects did not open from professional mode')
+            check(escaped['display']!='none' and escaped['pos']=='fixed','navigation disappeared after professional exit')
+
+            # Phone layout: all five requested destinations must still be reachable.
+            d.set_window_size(390,844);d.get('http://127.0.0.1:8765/?nav-mobile-e2e=19.19');time.sleep(2.5)
+            mobile=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect(),items=[...document.querySelectorAll('.r19-navitem')];return {pos:getComputedStyle(n).position,bottom:innerHeight-r.bottom,visible:items.filter(x=>getComputedStyle(x).display!='none').length,dest:[1,2,3,4,5].map(i=>getComputedStyle(items[i]).display!='none')}")
+            print('MOBILE',json.dumps(mobile,ensure_ascii=False))
+            check(mobile['pos']=='fixed','mobile navigation is not fixed')
+            check(abs(mobile['bottom'])<2,'mobile navigation is not pinned to bottom')
+            check(mobile['visible']==6,'mobile navigation does not expose build + five destinations')
+            check(all(mobile['dest']),'one or more of the five requested mobile destinations is hidden')
+
+            logs=d.get_log('browser');bad=[]
+            for row in logs:
+              msg=row.get('message','');print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
+              if row.get('level')=='SEVERE' and 'favicon.ico' not in msg: bad.append(msg)
+            check(not bad,'severe browser errors: '+' | '.join(bad[:5]))
+            if failures:
+              print('ASSERT_FAIL',json.dumps(failures,ensure_ascii=False));sys.exit(1)
+            print('ASSERT_PASS persistent RAVAN navigation')
+          finally:
+            d.quit()
+          PY
