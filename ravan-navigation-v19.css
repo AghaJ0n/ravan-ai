@@ -35,6 +35,13 @@
   }
   html.r19-professional-active .r19-context,
   html.r19-professional-active .r19-topbar{display:none!important}
+
+  /* Global sidebar destinations can be opened without destroying the current
+     professional-form state. The utility page temporarily replaces the legacy
+     professional surface; Back reveals the exact professional state again. */
+  html.r19-professional-active:has(.r19-utility-view.open) .r19-professional-host{display:none!important}
+  html.r19-professional-active:has(.r19-utility-view.open) .r19-utility-view.open{display:block!important}
+  html.r19-professional-active:has(.r19-utility-view.open) .r19-main{padding:16px!important;overflow:auto!important;background:var(--color-bg)!important}
 }
 
 @media (min-width:1200px){
@@ -59,4 +66,7 @@
     z-index:600!important;
   }
   html.r19-professional-active .r19-main{padding-bottom:64px!important}
+  html.r19-professional-active:has(.r19-utility-view.open) .r19-professional-host{display:none!important}
+  html.r19-professional-active:has(.r19-utility-view.open) .r19-utility-view.open{display:block!important}
+  html.r19-professional-active:has(.r19-utility-view.open) .r19-main{padding:8px 8px 72px!important;background:var(--color-bg)!important}
 }
