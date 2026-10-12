@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect legacy professional button
+      - name: Inspect legacy professional handler
         shell: bash
         run: |
           node <<'NODE'
@@ -19,11 +19,15 @@ jobs:
           const ctx={window:{}};ctx.window.window=ctx.window;vm.createContext(ctx);
           for(const f of ['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js']) vm.runInContext(fs.readFileSync(f,'utf8'),ctx,{filename:f});
           const html=zlib.gunzipSync(Buffer.from(ctx.window.__RAVAN_B64||'','base64')).toString('utf8');
-          const terms=['ورود به فرم حرفه‌ای آموزشی','فرم حرفه‌ای آموزشی','حرفه‌ای آموزشی','professional'];
-          for(const term of terms){
-            let i=html.indexOf(term); console.log('\nTERM',term,'INDEX',i);
-            if(i>=0) console.log(html.slice(Math.max(0,i-2200),Math.min(html.length,i+4200)));
+          for(const term of ['function r11OpenTeacherAdvanced','function startProfessional','id="professional','class="professional','TeacherAI','professionalForm']){
+            const i=html.indexOf(term); console.log('\nTERM',term,'INDEX',i);
+            if(i>=0) console.log(html.slice(Math.max(0,i-1800),Math.min(html.length,i+5200)));
           }
-          const funcs=[...html.matchAll(/function\s+([A-Za-z0-9_$]+)\s*\([^)]*\)\s*\{/g)].map(m=>m[1]);
-          console.log('\nFUNCTIONS_AROUND_EDU',funcs.filter(x=>/edu|teach|pro|legacy|form/i.test(x)).join('\n'));
+          const i=html.indexOf('function r11OpenTeacherAdvanced');
+          if(i>=0){
+            const next=html.indexOf('\nfunction ',i+10);
+            console.log('\nR11_OPEN_TEACHER_FULL\n'+html.slice(i,next>i?next:i+5000));
+          }
+          const ids=[...html.matchAll(/id="([^"]+)"/g)].map(m=>m[1]).filter(x=>/professional|teacher|form|workspace|home/i.test(x));
+          console.log('\nMATCHING_IDS\n'+[...new Set(ids)].join('\n'));
           NODE
