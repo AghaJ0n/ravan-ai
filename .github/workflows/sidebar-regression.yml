@@ -1,0 +1,95 @@
+name: RAVAN sidebar regression
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'ravan-sections-v19.js'
+      - 'ravan-sections-v19.css'
+      - 'ravan-ui-v19.js'
+      - 'ravan-core-bridge-v19.js'
+      - '.github/workflows/sidebar-regression.yml'
+permissions:
+  contents: read
+jobs:
+  chrome-sidebar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Exercise all sidebar sections
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import json,time,sys
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o); failures=[]
+          def js(code,*args): return d.execute_script(code,*args)
+          def check(cond,msg):
+            if not cond: failures.append(msg)
+          def nav(i):
+            js("document.querySelector('.r19-navitem[data-nav-index=\"'+arguments[0]+'\"]').click()",str(i));time.sleep(.12)
+          try:
+            d.get('http://127.0.0.1:8765/?sidebar-e2e=19.17');time.sleep(2.5)
+            boot=js("return {sections:window.RAVAN_SECTIONS?.version||'',nav:document.querySelectorAll('.r19-navitem').length}")
+            print('BOOT',json.dumps(boot,ensure_ascii=False));check(boot['sections']=='19.17','sections module not loaded');check(boot['nav']>=6,'sidebar nav incomplete')
+
+            # Build a real workspace first so utility pages must preserve return state.
+            js("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)");time.sleep(.35)
+            check(js("return document.documentElement.classList.contains('r19-workspace-active')"),'workspace not active before sidebar test')
+
+            # Projects: seed one real-looking record and verify list/search/back.
+            js("localStorage.setItem('TeacherAI_Projects_v7',JSON.stringify([{id:'e2e_project',name:'پروژه تست',grade:'پایه چهارم',title:'علوم',target:'chatgpt',score:91,updated:new Date().toISOString(),payload:{target:'chatgpt',sources:[],data:{sections:[]}}}]))")
+            nav(1)
+            check(js("return document.querySelector('.r19-section-view h2')?.textContent.includes('پروژه‌های من')"),'projects view did not open')
+            check(js("return document.querySelectorAll('[data-project-card]').length===1"),'project card not rendered')
+            js("document.getElementById('r19ProjectSearch').value='پایه چهارم';document.getElementById('r19ProjectSearch').dispatchEvent(new Event('input',{bubbles:true}))")
+            check(not js("return document.querySelector('[data-project-card]').hidden"),'project search hid matching card')
+            js("document.querySelector('[data-r19-section-back]').click()");time.sleep(.12)
+            check(js("return document.documentElement.classList.contains('r19-workspace-active')"),'back from projects did not restore workspace')
+
+            # Templates: open and apply first template through the real UI.
+            nav(2);check(js("return document.querySelectorAll('[data-template-card]').length>=6"),'template cards missing')
+            js("document.querySelector('[data-template-use=\"0\"]').click()");time.sleep(.55)
+            check(js("return document.documentElement.classList.contains('r19-workspace-active')"),'template did not reach workspace')
+            check(js("return !!document.getElementById('r11MainGoal')"),'template workspace has no main goal')
+
+            # Library: create item and insert it into the current main goal.
+            nav(3)
+            check(js("return document.querySelector('.r19-section-view h2')?.textContent.includes('کتابخانه')"),'library view did not open')
+            js("const f=document.getElementById('r19LibraryForm');f.querySelector('[name=title]').value='متن تست';f.querySelector('[name=text]').value='هدف کتابخانه‌ای برای تست';f.querySelector('[name=tags]').value='تست، آموزش';f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))");time.sleep(.12)
+            check(js("return JSON.parse(localStorage.getItem('ravan_library_v19')||'[]').length===1"),'library item was not persisted')
+            js("document.querySelector('[data-library-use]').click()");time.sleep(.15)
+            check(js("return document.getElementById('r11MainGoal')?.value==='هدف کتابخانه‌ای برای تست'"),'library use did not populate main goal')
+            check(js("return document.documentElement.classList.contains('r19-workspace-active')"),'library use did not return to workspace')
+
+            # History must contain actions created above.
+            nav(4)
+            check(js("return document.querySelector('.r19-section-view h2')?.textContent.includes('تاریخچه')"),'history view did not open')
+            check(js("return document.querySelectorAll('.r19-history-item').length>=2"),'history did not record section activity')
+
+            # Settings: density, reduced motion and top-bar settings entry.
+            nav(5)
+            check(js("return document.querySelector('.r19-section-view h2')?.textContent.includes('تنظیمات')"),'settings view did not open')
+            js("document.querySelector('[data-pref=\"density\"][data-value=\"compact\"]').click()");time.sleep(.08)
+            check(js("return document.documentElement.classList.contains('r19-compact-shell')"),'compact density did not apply')
+            js("document.querySelector('[data-pref=\"motion\"][data-value=\"reduce\"]').click()");time.sleep(.08)
+            check(js("return document.documentElement.classList.contains('r19-reduce-motion')"),'reduced motion did not apply')
+            js("document.querySelector('[data-r19-section-back]').click()");time.sleep(.08)
+            js("document.querySelector('[data-action=\"settings\"]').click()");time.sleep(.08)
+            check(js("return document.querySelector('.r19-section-view h2')?.textContent.includes('تنظیمات')"),'top-bar settings did not open functional settings')
+
+            logs=d.get_log('browser');bad=[]
+            for row in logs:
+              print('BROWSER_LOG',json.dumps(row,ensure_ascii=False));msg=row.get('message','')
+              if row.get('level')=='SEVERE' and 'favicon.ico' not in msg: bad.append(msg)
+            check(not bad,'severe browser console errors: '+' | '.join(bad[:5]))
+            if failures:
+              print('ASSERT_FAIL',json.dumps(failures,ensure_ascii=False));sys.exit(1)
+            print('ASSERT_PASS all RAVAN sidebar sections')
+          finally:d.quit()
+          PY
