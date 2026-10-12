@@ -1,0 +1,52 @@
+name: Diagnose all controls
+on:
+  push:
+    paths:
+      - '.github/workflows/diag-all-controls.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Inspect professional controls
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import json,time
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o)
+          try:
+            d.get('http://127.0.0.1:8765/?diag=all-controls')
+            time.sleep(2)
+            d.execute_script("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)")
+            time.sleep(.5)
+            d.execute_script("document.querySelector('#r11TeacherAdvanced button').click()")
+            time.sleep(.5)
+            data=d.execute_script(r'''return (()=>{
+              const h=document.getElementById('r19ProfessionalHost');
+              const vis=e=>!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length);
+              const btns=[...h.querySelectorAll('button')].filter(vis).map((b,i)=>({i,text:(b.innerText||'').trim(),id:b.id||'',cls:b.className||'',onclick:b.getAttribute('onclick')||'',disabled:b.disabled,aria:b.getAttribute('aria-label')||''}));
+              const panels=[...h.querySelectorAll('[id],[class]')].filter(e=>/step|stage|section|panel/i.test((e.id||'')+' '+(e.className||''))).map(e=>({tag:e.tagName,id:e.id||'',cls:String(e.className||''),display:getComputedStyle(e).display,hidden:e.hidden,text:(e.innerText||'').trim().slice(0,100)})).slice(0,160);
+              const globals=['setStep','nextStep','prevStep','goNext','goPrev','renderStep','updateStep','validateStep'].reduce((a,k)=>(a[k]=typeof window[k],a),{});
+              return {buttons:btns,panels,globals,bodyClass:document.body.className,htmlClass:document.documentElement.className};
+            })()''')
+            print('DIAG',json.dumps(data,ensure_ascii=False))
+            # exercise every visible button whose label is next/previous or contains a step number
+            nav=d.execute_script(r'''return (()=>{
+              const h=document.getElementById('r19ProfessionalHost');
+              const vis=e=>!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length);
+              const labels=['مرحله بعد','مرحله قبل','بعدی','قبلی'];
+              return [...h.querySelectorAll('button')].filter(b=>vis(b)&&labels.some(x=>(b.innerText||'').includes(x))).map(b=>({text:(b.innerText||'').trim(),html:b.outerHTML.slice(0,500)}));
+            })()''')
+            print('NAV',json.dumps(nav,ensure_ascii=False))
+            for row in d.get_log('browser'): print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
+          finally:d.quit()
+          PY
