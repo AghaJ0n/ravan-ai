@@ -42,8 +42,10 @@
 }
 
 @media (max-width:767px){
-  /* On phones the same five destinations stay permanently reachable through
-     the existing bottom navigation so the content does not lose usable width. */
+  /* On phones preserve access to Build + all five persistent destinations. */
+  .r19-navlist{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:3px!important}
+  .r19-navitem:nth-child(n+6){display:flex!important}
+  .r19-navitem{min-width:0!important;padding:0!important}
   html.r19-professional-active body{padding-bottom:64px!important}
   html.r19-professional-active .r19-nav{
     display:flex!important;
