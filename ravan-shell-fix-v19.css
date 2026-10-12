@@ -1,0 +1,27 @@
+/* RAVAN AI v19.21 — keep the legacy gate inside the SaaS shell instead of covering it */
+.r19-main > .r11-gate{
+  position:static!important;
+  inset:auto!important;
+  top:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:auto!important;
+  z-index:auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  margin:0!important;
+  transform:none!important;
+}
+
+/* Defensive reset for legacy shell wrappers that may inherit fullscreen rules. */
+.r19-main > .r11-gate > .r11-shell,
+.r19-main > .r11-gate .r11-shell{
+  position:static!important;
+  inset:auto!important;
+  z-index:auto!important;
+  width:100%!important;
+  max-width:none!important;
+  min-height:0!important;
+  margin:0!important;
+}
