@@ -1,0 +1,117 @@
+/* RAVAN AI v19.23 — viewport shell with independently scrolling center content */
+
+/* Tablet and desktop: keep global chrome in place and let only the content
+   column move vertically. This applies to builder, workspace and utility pages. */
+@media (min-width:768px){
+  html,body{
+    height:100%;
+    min-height:100%;
+    overflow:hidden!important;
+  }
+
+  .r19-app{
+    height:100vh!important;
+    min-height:100vh!important;
+    max-height:100vh!important;
+    overflow:hidden!important;
+  }
+
+  .r19-main{
+    min-height:0!important;
+    max-height:calc(100vh - var(--header-height))!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-gutter:stable;
+    scroll-behavior:smooth;
+  }
+
+  /* Left context stays visually anchored while the center column scrolls. */
+  .r19-context{
+    min-height:0!important;
+    max-height:calc(100vh - var(--header-height))!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+  }
+
+  /* Utility destinations all inherit the same center-column scrolling model. */
+  .r19-utility-view,
+  .r19-utility-view.r19-section-view{
+    min-height:0!important;
+  }
+
+  /* Legacy professional mode has no global top bar, so its center surface gets
+     the full viewport height while the persistent right navigation stays put. */
+  html.r19-professional-active .r19-main{
+    height:100vh!important;
+    max-height:100vh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior-y:contain;
+  }
+
+  html.r19-professional-active:has(.r19-utility-view.open) .r19-main{
+    height:100vh!important;
+    max-height:100vh!important;
+    overflow-y:auto!important;
+  }
+
+  /* Subtle, consistent scrollbar for the independently scrolling surfaces. */
+  .r19-main,
+  .r19-context{
+    scrollbar-width:thin;
+    scrollbar-color:#c7c9d9 transparent;
+  }
+  .r19-main::-webkit-scrollbar,
+  .r19-context::-webkit-scrollbar{width:8px}
+  .r19-main::-webkit-scrollbar-track,
+  .r19-context::-webkit-scrollbar-track{background:transparent}
+  .r19-main::-webkit-scrollbar-thumb,
+  .r19-context::-webkit-scrollbar-thumb{background:#c7c9d9;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+}
+
+/* Between tablet and desktop the context summary occupies its own row. Keep it
+   fixed in that row and dedicate the remaining height to the scrolling center. */
+@media (min-width:768px) and (max-width:1199px){
+  .r19-app{
+    grid-template-rows:var(--header-height) auto minmax(0,1fr)!important;
+  }
+  .r19-context{
+    max-height:min(220px,32vh)!important;
+    overflow-y:auto!important;
+  }
+  .r19-main{
+    height:auto!important;
+    max-height:none!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+  }
+}
+
+/* Phones keep the existing mobile model: sticky top bar + fixed bottom nav and
+   natural document scrolling, avoiding nested-scroll traps on small screens. */
+@media (max-width:767px){
+  html,body{
+    height:auto!important;
+    min-height:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+  .r19-app{
+    height:auto!important;
+    min-height:100vh!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+  .r19-main{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+  html.r19-professional-active .r19-main{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}
