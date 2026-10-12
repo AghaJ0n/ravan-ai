@@ -33,9 +33,7 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
     let html=await new Response(stream).text();
 
     /* Preserve the exact legacy workspace markup before the document is
-       rewritten. A malformed legacy inline block can prevent this late DOM
-       section from materializing in some browsers, while its JS functions
-       still load. The bridge can restore this original markup verbatim. */
+       rewritten. The bridge can restore this original markup verbatim. */
     const wsId=html.indexOf('id="r11Workspace"');
     if(wsId>=0){
       const wsStart=html.lastIndexOf('<div',wsId);
@@ -45,8 +43,35 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
       window.__RAVAN_WORKSPACE_HTML='';
     }
 
-    const styles='<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.15"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.15"><link rel="stylesheet" href="ravan-components-v19.css?v=19.15">';
-    const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.15"><\/script><script src="ravan-ui-v19.js?v=19.15"><\/script><script src="ravan-a11y-v19.js?v=19.15"><\/script>';
+    /* Chrome was parsing the large first legacy inline runtime incorrectly
+       after document.write(), which left all professional-form globals such as
+       move(), openHomeV7(), previewMD(), settings/profile handlers, etc. absent.
+       The source itself is valid. Externalize that exact runtime to a Blob URL
+       and keep it in the same position so it executes as a classic blocking
+       script with the original ordering, without passing its source through the
+       HTML parser a second time. */
+    const legacyRe=/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi;
+    let legacyMatch=null,m;
+    while((m=legacyRe.exec(html))){
+      const code=m[1]||'';
+      if(code.includes('function move(')&&code.includes('function openHomeV7(')&&code.includes('function previewMD(')){
+        legacyMatch={full:m[0],code,index:m.index};
+        break;
+      }
+    }
+    if(legacyMatch){
+      const runtimeUrl=URL.createObjectURL(new Blob([legacyMatch.code],{type:'text/javascript'}));
+      window.__RAVAN_LEGACY_RUNTIME_URL=runtimeUrl;
+      window.__RAVAN_LEGACY_RUNTIME_RECOVERY='19.16';
+      const recoveredTag='<script src="'+runtimeUrl+'" data-ravan-legacy-runtime="19.16"><\/script>';
+      html=html.slice(0,legacyMatch.index)+recoveredTag+html.slice(legacyMatch.index+legacyMatch.full.length);
+    }else{
+      window.__RAVAN_LEGACY_RUNTIME_RECOVERY='missing';
+      console.error('[RAVAN] legacy runtime block was not found');
+    }
+
+    const styles='<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.16"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.16"><link rel="stylesheet" href="ravan-components-v19.css?v=19.16">';
+    const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.16"><\/script><script src="ravan-ui-v19.js?v=19.16"><\/script><script src="ravan-a11y-v19.js?v=19.16"><\/script>';
     html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
     document.open(); document.write(html); document.close();
   } catch(e) {
