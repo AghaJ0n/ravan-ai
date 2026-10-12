@@ -26,6 +26,9 @@ jobs:
           python - <<'PY'
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.support import expected_conditions as EC
+          from selenium.webdriver.common.by import By
           import json,time,sys
 
           failures=[]
@@ -34,10 +37,14 @@ jobs:
           o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
           o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
           d=webdriver.Chrome(options=o)
+          wait=WebDriverWait(d,20)
           def js(code,*args): return d.execute_script(code,*args)
+          def wait_nav():
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
+            wait.until(lambda x: x.execute_script("return document.documentElement.dataset.ravanPersistentNav||''")=='19.20')
           try:
-            d.get('http://127.0.0.1:8765/?nav-e2e=19.20');time.sleep(2.8)
-            boot=js("const n=document.querySelector('.r19-nav'),r=n?.getBoundingClientRect();return {v:document.documentElement.dataset.ravanPersistentNav||'',pos:getComputedStyle(n).position,display:getComputedStyle(n).display,top:r?.top||-1,right:innerWidth-(r?.right||0),width:r?.width||0,visible:[...document.querySelectorAll('.r19-navitem')].filter(x=>getComputedStyle(x).display!='none').length}")
+            d.get('http://127.0.0.1:8765/?nav-e2e=19.20');wait_nav()
+            boot=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect();return {v:document.documentElement.dataset.ravanPersistentNav||'',pos:getComputedStyle(n).position,display:getComputedStyle(n).display,top:r.top,right:innerWidth-r.right,width:r.width,visible:[...document.querySelectorAll('.r19-navitem')].filter(x=>getComputedStyle(x).display!='none').length}")
             print('DESKTOP_BOOT',json.dumps(boot,ensure_ascii=False))
             check(boot['v']=='19.20','persistent nav module missing')
             check(boot['pos']=='fixed','desktop navigation is not fixed')
@@ -58,7 +65,6 @@ jobs:
               check(state['pos']=='fixed' and state['display']!='none' and state['width']>=200,f'{title}: persistent right nav disappeared')
               check(state['active']==str(idx),f'{title}: active nav state wrong')
 
-            # Enter the teacher professional form and verify global navigation remains visible.
             js("window.RAVAN_UI.showBuilder(); r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)");time.sleep(.35)
             js("document.querySelector('#r11TeacherAdvanced button').click()");time.sleep(.45)
             prof=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect();return {active:document.documentElement.classList.contains('r19-professional-active'),display:getComputedStyle(n).display,pos:getComputedStyle(n).position,top:r.top,width:r.width}")
@@ -67,7 +73,6 @@ jobs:
             check(prof['display']!='none' and prof['pos']=='fixed' and prof['width']>=200,'navigation disappeared in professional mode')
             check(abs(prof['top'])<2,'professional navigation is not pinned to top')
 
-            # Global utility pages should open over professional mode without losing its state.
             js("document.querySelector('.r19-navitem[data-nav-index=\"1\"]').click()");time.sleep(.25)
             routed=js("const n=document.querySelector('.r19-nav'),u=document.querySelector('.r19-utility-view.open'),h=document.getElementById('r19ProfessionalHost');return {professional:document.documentElement.classList.contains('r19-professional-active'),title:u?.querySelector('h2')?.textContent.trim()||'',utility:u?getComputedStyle(u).display:'',host:h?getComputedStyle(h).display:'',navDisplay:getComputedStyle(n).display,navPos:getComputedStyle(n).position}")
             print('PROF_GLOBAL_PAGE',json.dumps(routed,ensure_ascii=False))
@@ -77,7 +82,6 @@ jobs:
             check(routed['host']=='none','professional host was not visually suspended behind utility page')
             check(routed['navDisplay']!='none' and routed['navPos']=='fixed','navigation disappeared on global page from professional mode')
 
-            # Back should reveal the exact professional form again.
             js("document.querySelector('[data-r19-section-back]').click()");time.sleep(.2)
             resumed=js("const h=document.getElementById('r19ProfessionalHost');return {professional:document.documentElement.classList.contains('r19-professional-active'),host:h?getComputedStyle(h).display:'',utilityOpen:!!document.querySelector('.r19-utility-view.open'),nav:getComputedStyle(document.querySelector('.r19-nav')).display}")
             print('PROF_RESUMED',json.dumps(resumed,ensure_ascii=False))
@@ -86,8 +90,7 @@ jobs:
             check(not resumed['utilityOpen'],'utility page remained open after back')
             check(resumed['nav']!='none','navigation disappeared after resuming professional form')
 
-            # Phone layout: Build + all five requested destinations remain reachable.
-            d.set_window_size(390,844);d.get('http://127.0.0.1:8765/?nav-mobile-e2e=19.20');time.sleep(2.5)
+            d.set_window_size(390,844);d.get('http://127.0.0.1:8765/?nav-mobile-e2e=19.20');wait_nav()
             mobile=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect(),items=[...document.querySelectorAll('.r19-navitem')];return {pos:getComputedStyle(n).position,bottom:innerHeight-r.bottom,visible:items.filter(x=>getComputedStyle(x).display!='none').length,dest:[1,2,3,4,5].map(i=>getComputedStyle(items[i]).display!='none')}")
             print('MOBILE',json.dumps(mobile,ensure_ascii=False))
             check(mobile['pos']=='fixed','mobile navigation is not fixed')
