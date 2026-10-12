@@ -1,0 +1,36 @@
+name: Inspect nav data
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-nav-data.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect legacy storage and navigation helpers
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),zlib=require('zlib');
+          const files=['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js'];
+          let b64='';
+          for(const f of files){const s=fs.readFileSync(f,'utf8');const m=s.match(/\+\"([A-Za-z0-9+/=]+)\"\s*;?\s*$/s);if(!m)throw new Error(f);b64+=m[1];}
+          const html=zlib.gunzipSync(Buffer.from(b64,'base64')).toString('utf8');
+          const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]);
+          const code=scripts[0]||'';
+          const names=['readProjectsV7','saveCurrentToLibraryV7','renderProjectsV7','continueLastV7','newProjectV7','projectSummaryV7','projectData','autosave','pushHistoryV8','v8FormSnapshot','applyHistorySnapshotV8'];
+          for(const n of names){
+            let p=code.indexOf('function '+n);if(p<0)p=code.indexOf(n+'=');if(p<0)p=code.indexOf(n+' =');
+            if(p>=0) console.log('\n### '+n+'\n'+code.slice(Math.max(0,p-500),Math.min(code.length,p+2600)).replace(/\n/g,' ↵ '));
+          }
+          console.log('\n### LOCALSTORAGE KEYS');
+          const keys=[...code.matchAll(/localStorage\.(?:getItem|setItem|removeItem)\((['"`])([^'"`]+)\1/g)].map(m=>m[2]);
+          console.log([...new Set(keys)].sort().join('\n'));
+          console.log('\n### LIBRARY/HISTORY HITS');
+          for(const term of ['library','Library','template','Template','history','History','کتابخانه','قالب','تاریخچه']){
+            let pos=0,c=0;while((pos=code.indexOf(term,pos))>=0&&c<8){console.log(term,pos,code.slice(Math.max(0,pos-180),pos+420).replace(/\n/g,' ↵ '));pos+=term.length;c++;}
+          }
+          NODE
