@@ -1,0 +1,31 @@
+name: RAVAN profile storage diagnostic
+on:
+  push:
+    paths:
+      - '.github/workflows/profile-storage-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate recent profile storage
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs'),vm=require('vm'),zlib=require('zlib');
+          global.window=globalThis;
+          const files=['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js'];
+          for(const f of files) vm.runInThisContext(fs.readFileSync(f,'utf8'),{filename:f});
+          const html=zlib.gunzipSync(Buffer.from(global.__RAVAN_B64||'','base64')).toString('utf8');
+          for(const needle of ['function loadRecent','loadRecent=','r11-pill','recentProfiles','recent']){
+            let from=0,hit=0;
+            while((hit=html.indexOf(needle,from))>=0){
+              console.log('\n=== MATCH',needle,'AT',hit,'===\n');
+              console.log(html.slice(Math.max(0,hit-1800),Math.min(html.length,hit+4200)));
+              from=hit+needle.length;
+              if(from>hit+needle.length+10000) break;
+            }
+          }
+          NODE
