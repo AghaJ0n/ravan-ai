@@ -11,23 +11,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect legacy professional handler
+      - name: Install Selenium
+        run: python -m pip install -q selenium
+      - name: Test professional form open and return
         shell: bash
         run: |
-          node <<'NODE'
-          const fs=require('fs'),vm=require('vm'),zlib=require('zlib');
-          const ctx={window:{}};ctx.window.window=ctx.window;vm.createContext(ctx);
-          for(const f of ['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js']) vm.runInContext(fs.readFileSync(f,'utf8'),ctx,{filename:f});
-          const html=zlib.gunzipSync(Buffer.from(ctx.window.__RAVAN_B64||'','base64')).toString('utf8');
-          for(const term of ['function r11OpenTeacherAdvanced','function startProfessional','id="professional','class="professional','TeacherAI','professionalForm']){
-            const i=html.indexOf(term); console.log('\nTERM',term,'INDEX',i);
-            if(i>=0) console.log(html.slice(Math.max(0,i-1800),Math.min(html.length,i+5200)));
-          }
-          const i=html.indexOf('function r11OpenTeacherAdvanced');
-          if(i>=0){
-            const next=html.indexOf('\nfunction ',i+10);
-            console.log('\nR11_OPEN_TEACHER_FULL\n'+html.slice(i,next>i?next:i+5000));
-          }
-          const ids=[...html.matchAll(/id="([^"]+)"/g)].map(m=>m[1]).filter(x=>/professional|teacher|form|workspace|home/i.test(x));
-          console.log('\nMATCHING_IDS\n'+[...new Set(ids)].join('\n'));
-          NODE
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          import time,json,sys
+          o=Options(); o.add_argument('--headless=new'); o.add_argument('--no-sandbox'); o.add_argument('--disable-dev-shm-usage'); o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o)
+          try:
+            d.get('http://127.0.0.1:8765/?diag=professional-19.14')
+            time.sleep(2)
+            d.execute_script("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)")
+            time.sleep(1)
+            btn=d.find_element(By.CSS_SELECTOR,'#r11TeacherAdvanced button')
+            print('BUTTON',btn.text,btn.is_displayed())
+            btn.click()
+            time.sleep(1)
+            state=d.execute_script("""
+              const h=document.getElementById('r19ProfessionalHost');
+              const app=h&&h.querySelector('.app');
+              const w=document.getElementById('r11Workspace');
+              const hs=h&&getComputedStyle(h),as=app&&getComputedStyle(app),ar=app&&app.getBoundingClientRect();
+              return {bridge:document.documentElement.dataset.ravanBridgeLoaded||'',proBridge:document.documentElement.dataset.ravanProfessionalBridge||'',root:document.documentElement.className,hostHidden:h?.hidden,hostDisplay:hs?.display||'',appDisplay:as?.display||'',appWidth:ar?.width||0,appHeight:ar?.height||0,workspaceDisplay:w?getComputedStyle(w).display:'',text:(app?.innerText||'').slice(0,700),back:!!document.getElementById('r19ProfessionalBack')};
+            """)
+            print('OPEN_STATE',json.dumps(state,ensure_ascii=False))
+            d.save_screenshot('/tmp/professional-open.png')
+            errors=[]
+            if 'r19-professional-active' not in state['root']: errors.append('professional root state missing')
+            if state['hostHidden'] or state['hostDisplay']=='none': errors.append('professional host hidden')
+            if state['appDisplay']=='none' or state['appWidth']<700 or state['appHeight']<500: errors.append('legacy professional app not visibly rendered')
+            if state['workspaceDisplay']!='none': errors.append('workspace still visible in professional mode')
+            if not state['back']: errors.append('RAVAN return button missing')
+            d.find_element(By.ID,'r19ProfessionalBack').click(); time.sleep(.5)
+            returned=d.execute_script("""
+              const h=document.getElementById('r19ProfessionalHost'),w=document.getElementById('r11Workspace');
+              return {root:document.documentElement.className,hostHidden:h?.hidden,workspaceDisplay:w?getComputedStyle(w).display:'',workspaceOpen:w?.classList.contains('open')};
+            """)
+            print('RETURN_STATE',json.dumps(returned,ensure_ascii=False))
+            if 'r19-professional-active' in returned['root']: errors.append('professional state remained after back')
+            if not returned['hostHidden']: errors.append('professional host remained visible after back')
+            if returned['workspaceDisplay']!='block' or not returned['workspaceOpen']: errors.append('workspace not restored after back')
+            for row in d.get_log('browser'): print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
+            if errors:
+              print('ASSERT_FAIL',errors);sys.exit(1)
+            print('ASSERT_PASS professional form opens visibly and returns to workspace')
+          finally:d.quit()
+          PY
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: professional-form-visual
+          path: /tmp/professional-open.png
