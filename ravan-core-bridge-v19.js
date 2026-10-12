@@ -1,23 +1,19 @@
-/* RAVAN AI v19.11 — restore and preserve the Core workspace */
+/* RAVAN AI v19.12 — restore Core workspace and legacy globals */
 (()=>{
 'use strict';
 
-/* Repair the two known nested insertBefore calls in the v19 UI. */
-const nativeInsertBefore=Node.prototype.insertBefore;
-if(!window.__RAVAN_INSERTBEFORE_FIX__){
-  window.__RAVAN_INSERTBEFORE_FIX__=1;
-  Node.prototype.insertBefore=function(newNode,refNode){
-    const helper=newNode?.nodeType===1 && (
-      newNode.classList?.contains('r19-field-search-icon') ||
-      newNode.classList?.contains('r19-cats')
-    );
-    if(helper && refNode?.parentNode && refNode.parentNode!==this && this.nodeType===1 && this.contains?.(refNode)){
-      return nativeInsertBefore.call(refNode.parentNode,newNode,refNode);
+/* Legacy Core handlers still call a global toast(). The consolidated UI owns
+   the real toast renderer inside RAVAN_UI, so expose a tiny compatibility
+   bridge instead of letting role/task clicks abort with ReferenceError. */
+if(typeof window.toast!=='function'){
+  window.toast=function(message,type='success'){
+    if(window.RAVAN_UI&&typeof window.RAVAN_UI.toast==='function'){
+      return window.RAVAN_UI.toast(message,type);
     }
-    return nativeInsertBefore.call(this,newNode,refNode);
+    console.info('[RAVAN]',message);
   };
 }
-document.documentElement.dataset.ravanBridgeLoaded='19.11';
+document.documentElement.dataset.ravanBridgeLoaded='19.12';
 
 /* In the legacy payload, an old malformed inline block can leave the workspace
    markup unmaterialized even though r11Move/buildWs are available. index.html
