@@ -10,33 +10,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python -m pip install -q selenium
-      - name: Inspect professional controls
+      - name: Rebuild legacy HTML and compile scripts
         shell: bash
         run: |
-          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
-          sleep 2
-          python - <<'PY'
-          from selenium import webdriver
-          from selenium.webdriver.chrome.options import Options
-          import json,time
-          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
-          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
-          d=webdriver.Chrome(options=o)
-          try:
-            d.get('http://127.0.0.1:8765/?diag=inventory')
-            time.sleep(2)
-            d.execute_script("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1); document.querySelector('#r11TeacherAdvanced button').click()")
-            time.sleep(.5)
-            report=d.execute_script(r'''return (()=>{
-              const h=document.getElementById('r19ProfessionalHost');
-              const onclicks=[...h.querySelectorAll('[onclick]')].map(e=>({tag:e.tagName,id:e.id||'',cls:String(e.className||''),text:(e.innerText||e.getAttribute('aria-label')||'').trim().slice(0,90),onclick:e.getAttribute('onclick')||''}));
-              const names=[...new Set(onclicks.flatMap(x=>[...x.onclick.matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)].map(m=>m[1])).filter(n=>!['getElementById','querySelector','preventDefault'].includes(n)))];
-              const globals={};for(const n of names)globals[n]=typeof window[n];
-              const structural=[...h.querySelectorAll('[id]')].filter(e=>/modal|overlay|profile|setting|home|preview|quality|library|toast|summary|output|source|project/i.test(e.id)).map(e=>({tag:e.tagName,id:e.id,cls:String(e.className||''),display:getComputedStyle(e).display,hidden:e.hidden,text:(e.innerText||'').trim().slice(0,180)}));
-              return {onclicks,globals,structural};
-            })()''')
-            print('INVENTORY',json.dumps(report,ensure_ascii=False))
-            for row in d.get_log('browser'): print('BROWSER_LOG',json.dumps(row,ensure_ascii=False))
-          finally:d.quit()
-          PY
+          node <<'NODE'
+          const fs=require('fs'),zlib=require('zlib');
+          const files=['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js'];
+          let b64='';
+          for(const f of files){
+            const s=fs.readFileSync(f,'utf8');
+            const m=s.match(/\+\"([A-Za-z0-9+/=]+)\"\s*;?\s*$/s);
+            if(!m) throw new Error('payload parse failed '+f);
+            b64+=m[1];
+          }
+          const html=zlib.gunzipSync(Buffer.from(b64,'base64')).toString('utf8');
+          console.log('HTML_LENGTH',html.length,'LINES',html.split('\n').length);
+          fs.writeFileSync('/tmp/legacy.html',html);
+          const re=/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi;
+          let m,i=0,failed=0;
+          while((m=re.exec(html))){
+            i++;
+            const code=m[1];
+            if(!code.trim()) continue;
+            try{ new Function(code); console.log('SCRIPT_OK',i,'len',code.length); }
+            catch(e){
+              failed++;
+              console.log('SCRIPT_FAIL',i,'len',code.length,e.name,e.message);
+              const lines=code.split('\n');
+              console.log('SCRIPT_LINES',lines.length);
+              for(let n=Math.max(0,lines.length-12);n<lines.length;n++) console.log(String(n+1).padStart(4,'0')+': '+lines[n].slice(0,1000));
+              console.log('TAIL',JSON.stringify(code.slice(-3000)));
+            }
+          }
+          console.log('SCRIPTS',i,'FAILED',failed);
+          NODE
