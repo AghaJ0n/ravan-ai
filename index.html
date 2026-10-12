@@ -7,13 +7,38 @@
 <meta name="description" content="میزکار هوشمند فارسی برای ساخت پرامپت و فرایندهای کاری بر اساس نقش، نوع کار و ابزار هوش مصنوعی.">
 <style>
 html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;background:#f5f7fb;color:#172033}
-#boot{height:100%;display:grid;place-items:center;text-align:center;padding:24px;box-sizing:border-box}
-#boot>div{background:#fff;border:1px solid #e4e7ec;border-radius:18px;padding:28px 32px;box-shadow:0 8px 30px rgba(20,30,55,.05);max-width:560px}
-h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
+#boot{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:radial-gradient(circle at 50% 42%,rgba(98,70,234,.09),transparent 34%),linear-gradient(180deg,#fbfcff 0%,#f5f7fb 100%);opacity:1;visibility:visible;transition:opacity 140ms ease,visibility 140ms ease}
+#boot.boot-ready{opacity:0;visibility:hidden;pointer-events:none}
+.boot-shell{display:grid;justify-items:center;gap:12px;text-align:center;direction:rtl}
+.boot-mark{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;background:linear-gradient(145deg,#7258f4,#5b3fe3);box-shadow:0 14px 34px rgba(98,70,234,.22)}
+.boot-mark svg{width:30px;height:30px;display:block}
+.boot-brand{font-size:21px;font-weight:800;letter-spacing:.2px;color:#172033}
+.boot-sub{font-size:12px;color:#7a8398;line-height:1.8}
+.boot-dots{height:10px;display:flex;gap:5px;align-items:center;direction:ltr;margin-top:2px}
+.boot-dots i{width:5px;height:5px;border-radius:999px;background:#6246ea;opacity:.28;animation:ravanBootDot 1s ease-in-out infinite}
+.boot-dots i:nth-child(2){animation-delay:.14s}.boot-dots i:nth-child(3){animation-delay:.28s}
+@keyframes ravanBootDot{0%,70%,100%{transform:translateY(0);opacity:.28}35%{transform:translateY(-3px);opacity:1}}
+@media (prefers-color-scheme:dark){html,body{background:#101526;color:#eef1ff}#boot{background:radial-gradient(circle at 50% 42%,rgba(139,112,255,.16),transparent 35%),linear-gradient(180deg,#12182a 0%,#0f1423 100%)}.boot-brand{color:#f3f5ff}.boot-sub{color:#9ca7be}}
+@media (prefers-reduced-motion:reduce){#boot{transition:none}.boot-dots i{animation:none}.boot-dots i:nth-child(2){opacity:.55}.boot-dots i:nth-child(3){opacity:.82}}
 </style>
 </head>
 <body>
-<div id="boot"><div><h1>RAVAN AI</h1><p>در حال آماده‌سازی میزکار هوشمند…</p></div></div>
+<div id="boot" role="status" aria-live="polite" aria-label="در حال آماده‌سازی RAVAN AI">
+  <div class="boot-shell">
+    <div class="boot-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="5" width="8" height="8" rx="2.4" fill="white"/>
+        <rect x="19" y="5" width="8" height="8" rx="2.4" fill="white" fill-opacity=".72"/>
+        <rect x="5" y="19" width="8" height="8" rx="2.4" fill="white" fill-opacity=".72"/>
+        <path d="M20 18.5h6.5v6.5H20z" fill="white"/>
+        <path d="M23.25 15v13M16.75 21.5h13" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".72"/>
+      </svg>
+    </div>
+    <div class="boot-brand">RAVAN AI</div>
+    <div class="boot-sub">در حال آماده‌سازی میزکار هوشمند</div>
+    <div class="boot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+  </div>
+</div>
 <script src="payload-1.js"></script>
 <script src="payload-2a.js"></script>
 <script src="payload-2b.js"></script>
@@ -73,9 +98,20 @@ h1{margin:0 0 10px;font-size:24px}p{margin:0;color:#667085;line-height:1.9}
     const styles='<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.17"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.17"><link rel="stylesheet" href="ravan-components-v19.css?v=19.17"><link rel="stylesheet" href="ravan-sections-v19.css?v=19.17"><link rel="stylesheet" href="ravan-navigation-v19.css?v=19.20"><link rel="stylesheet" href="ravan-shell-fix-v19.css?v=19.21"><link rel="stylesheet" href="ravan-scroll-shell-v19.css?v=19.24">';
     const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.17"><\/script><script src="ravan-ui-v19.js?v=19.17"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-profile-management-v19.js?v=19.22"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.20"><\/script>';
     html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
+
+    const boot=document.getElementById('boot');
+    const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(boot&&!reduced){
+      boot.classList.add('boot-ready');
+      await new Promise(resolve=>setTimeout(resolve,120));
+    }
     document.open(); document.write(html); document.close();
   } catch(e) {
-    document.getElementById("boot").innerHTML="<div><h1>RAVAN AI</h1><p>مرورگر نتوانست برنامه را بارگذاری کند. لطفاً از نسخه جدید Chrome یا Edge استفاده کنید.</p></div>";
+    const boot=document.getElementById('boot');
+    if(boot){
+      boot.classList.remove('boot-ready');
+      boot.innerHTML='<div class="boot-shell"><div class="boot-brand">RAVAN AI</div><div class="boot-sub">مرورگر نتوانست برنامه را بارگذاری کند. لطفاً از نسخه جدید Chrome یا Edge استفاده کنید.</div></div>';
+    }
     console.error(e);
   }
 })();
