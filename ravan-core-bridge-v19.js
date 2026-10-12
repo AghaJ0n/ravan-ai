@@ -1,4 +1,4 @@
-/* RAVAN AI v19.14 — restore Core workspace, legacy globals and professional teacher form */
+/* RAVAN AI v19.15 — restore Core workspace, legacy globals and professional teacher form */
 (()=>{
 'use strict';
 
@@ -12,7 +12,7 @@ if(typeof window.toast!=='function'){
     console.info('[RAVAN]',message);
   };
 }
-document.documentElement.dataset.ravanBridgeLoaded='19.14';
+document.documentElement.dataset.ravanBridgeLoaded='19.15';
 
 const gate=document.querySelector('.r11-gate');
 
@@ -38,7 +38,7 @@ const shell=workspace?.querySelector('.r11-ws-shell')||null;
 /* Preserve the original TeacherAI professional interface before v19 rebuilds
    <body>. We keep all legacy top-level UI nodes (app, overlays, modals, toast)
    in a detached host; scripts stay in place so subsequent external files still
-   execute normally. This avoids the v19.5 mistake of rendering both UIs at once. */
+   execute normally. This avoids rendering both UIs at once. */
 const professionalHost=document.createElement('section');
 professionalHost.id='r19ProfessionalHost';
 professionalHost.className='r19-professional-host';
@@ -125,8 +125,17 @@ function exitProfessional(){
   window.scrollTo({top:0,behavior:'auto'});
 }
 
-/* Inline onclick resolves this global at click time, so replacing it here makes
-   the existing purple button functional without editing the legacy payload. */
+/* Inline legacy handlers can retain their original global binding in the
+   document-written payload. Capture the button click before target onclick so
+   the professional transition is guaranteed to use the consolidated bridge. */
+document.addEventListener('click',e=>{
+  const btn=e.target?.closest?.('#r11TeacherAdvanced button');
+  if(!btn)return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  enterProfessional();
+},true);
+
 window.r11OpenTeacherAdvanced=enterProfessional;
 window.RAVAN_PROFESSIONAL={open:enterProfessional,close:exitProfessional,host:professionalHost};
 returnBar.querySelector('#r19ProfessionalBack')?.addEventListener('click',exitProfessional);
