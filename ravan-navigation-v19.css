@@ -1,0 +1,60 @@
+/* RAVAN AI — persistent right navigation */
+@media (min-width:768px){
+  .r19-nav{
+    position:fixed!important;
+    top:var(--header-height)!important;
+    right:max(0px,calc((100vw - var(--page-max-width))/2))!important;
+    bottom:auto!important;
+    width:var(--sidebar-nav-width)!important;
+    height:calc(100vh - var(--header-height))!important;
+    z-index:85!important;
+  }
+  .r19-navlist{width:100%}
+  .r19-navitem:first-child{margin-bottom:8px}
+
+  /* The professional form used to hide the global navigation entirely.
+     Keep the same RAVAN navigation available while the legacy professional
+     workspace occupies the content area. */
+  html.r19-professional-active .r19-nav{
+    display:flex!important;
+    top:0!important;
+    height:100vh!important;
+    right:max(0px,calc((100vw - var(--page-max-width))/2))!important;
+  }
+  html.r19-professional-active .r19-app{
+    display:grid!important;
+    grid-template-columns:var(--sidebar-nav-width) minmax(0,1fr)!important;
+    grid-template-rows:1fr!important;
+    direction:rtl!important;
+  }
+  html.r19-professional-active .r19-main{
+    grid-column:2!important;
+    grid-row:1!important;
+    min-width:0!important;
+    padding:0!important;
+  }
+  html.r19-professional-active .r19-context,
+  html.r19-professional-active .r19-topbar{display:none!important}
+}
+
+@media (min-width:1200px){
+  .r19-navitem span{display:inline!important}
+}
+
+@media (max-width:767px){
+  /* On phones the same five destinations stay permanently reachable through
+     the existing bottom navigation so the content does not lose usable width. */
+  html.r19-professional-active body{padding-bottom:64px!important}
+  html.r19-professional-active .r19-nav{
+    display:flex!important;
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    top:auto!important;
+    bottom:0!important;
+    width:100%!important;
+    height:64px!important;
+    z-index:600!important;
+  }
+  html.r19-professional-active .r19-main{padding-bottom:64px!important}
+}
