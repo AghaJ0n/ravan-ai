@@ -41,7 +41,8 @@ jobs:
           def js(code,*args): return d.execute_script(code,*args)
           def wait_nav():
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR,'.r19-nav')))
-            wait.until(lambda x: x.execute_script("return document.documentElement.dataset.ravanPersistentNav||''")=='19.20')
+            wait.until(lambda x: x.execute_script("return document.querySelectorAll('.r19-navitem').length>=6"))
+            time.sleep(.25)
           try:
             d.get('http://127.0.0.1:8765/?nav-e2e=19.20');wait_nav()
             boot=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect();return {v:document.documentElement.dataset.ravanPersistentNav||'',pos:getComputedStyle(n).position,display:getComputedStyle(n).display,top:r.top,right:innerWidth-r.right,width:r.width,visible:[...document.querySelectorAll('.r19-navitem')].filter(x=>getComputedStyle(x).display!='none').length}")
