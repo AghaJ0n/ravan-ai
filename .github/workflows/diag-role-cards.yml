@@ -1,31 +1,64 @@
-name: RAVAN role split hotfix
+name: RAVAN role split verification
 on:
   push:
     paths:
       - '.github/workflows/diag-role-cards.yml'
 permissions:
-  contents: write
+  contents: read
 jobs:
-  apply:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch decompressed core role catalog
+      - run: python -m pip install -q selenium
+      - name: Verify separated roles and routing
         shell: bash
         run: |
-          node - <<'NODE'
-          const fs=require('fs');
-          let index=fs.readFileSync('index.html','utf8');
-          const anchor="    let html=await new Response(stream).text();";
-          if(!index.includes(anchor)) throw new Error('decompression anchor not found');
-          if(!index.includes('RAVAN_ROLE_SPLIT_19_29')){
-            const patch=`\n\n    /* RAVAN_ROLE_SPLIT_19_29 — split formerly combined roles before Core scripts execute. */\n    const roleCatalogV1929=\"const r11Roles=[\\n['teacher','📚','معلم','تدریس، طرح درس، آزمون و محتوای آموزشی'],['designer','🎨','طراح','Brief طراحی، رابط کاربری، ارائه و سیستم بصری'],['graphic_designer','🖌️','گرافیست','پوستر، بنر، هویت بصری و پرامپت تصویر'],['researcher','🔎','پژوهشگر','منابع، مرور ادبیات، تحلیل مقاله و گزارش پژوهشی'],['student','🎓','دانشجو','یادگیری دانشگاهی، پژوهش، خلاصه و ارائه'],['school_student','📘','دانش‌آموز','یادگیری درس، تمرین، آزمونک و برنامه مطالعه'],['manager','📊','مدیر','تصمیم‌گیری، گزارش، برنامه‌ریزی و جلسات'],['deputy','🏫','معاون','برنامه مدرسه، هماهنگی، گزارش و پیگیری'],['executive','📋','مسئول اجرایی','اجرای برنامه‌ها، پیگیری امور، گزارش و هماهنگی'],['creator','✍️','تولیدکننده محتوا','مقاله، شبکه اجتماعی، سناریو و تقویم محتوا'],['programmer','💻','برنامه‌نویس','کدنویسی، رفع خطا، مستندسازی و معماری'],['specialist','🧩','کارشناس','تحلیل، گزارش تخصصی، مستندسازی و پیگیری'],['admin','🗂️','کارمند اداری','نامه، صورت‌جلسه، فرم و گردش کار'],['other','＋','سایر','نقش دیگری دارم و خودم آن را مشخص می‌کنم']];\";\n    html=html.replace(/const r11Roles=\\[[\\s\\S]*?\\];\\s*const r11Tasks=/,roleCatalogV1929+'\\nconst r11Tasks=');\n    html=html.replace(\"function r115TaskItems(){return (r11Tasks[r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}\",\"function r115TaskItems(){const alias={school_student:'student',graphic_designer:'designer',executive:'deputy',specialist:'admin'};return (r11Tasks[alias[r11State.role]||r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}\");`;
-            index=index.replace(anchor,anchor+patch);
-          }
-          fs.writeFileSync('index.html',index);
-          NODE
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git commit -m "Inject separated roles into decompressed core"
-          git push
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          import json,time,sys
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o); failures=[]
+          def js(code,*args): return d.execute_script(code,*args)
+          def check(cond,msg):
+            if not cond: failures.append(msg)
+          def load():
+            d.get('http://127.0.0.1:8765/?verify-role-split=19.29')
+            WebDriverWait(d,15).until(lambda x: len(x.find_elements('css selector','.r112-role-option'))>=14)
+          try:
+            load()
+            expected={'teacher':'معلم','designer':'طراح','graphic_designer':'گرافیست','researcher':'پژوهشگر','student':'دانشجو','school_student':'دانش‌آموز','manager':'مدیر','deputy':'معاون','executive':'مسئول اجرایی','creator':'تولیدکننده محتوا','programmer':'برنامه‌نویس','specialist':'کارشناس','admin':'کارمند اداری','other':'سایر'}
+            cards=js("return Object.fromEntries([...document.querySelectorAll('.r112-role-option')].map(x=>[x.dataset.role,x.querySelector('b')?.textContent.trim()]))")
+            print('CARDS',json.dumps(cards,ensure_ascii=False))
+            check(len(cards)==14,'expected 14 role cards')
+            for k,v in expected.items(): check(cards.get(k)==v,f'{k}: {cards.get(k)} != {v}')
+            check(not any('/' in (v or '') for v in cards.values()),'combined title remains')
+
+            for cat,need in [('آموزش',['معلم','دانش‌آموز','دانشجو','معاون']),('طراحی و خلاقیت',['طراح','گرافیست']),('کسب‌وکار',['مدیر','مسئول اجرایی','کارشناس','کارمند اداری'])]:
+              js("[...document.querySelectorAll('.r19-cat')].find(x=>x.textContent.trim()===arguments[0]).click()",cat);time.sleep(.15)
+              visible=js("return [...document.querySelectorAll('.r112-role-option')].filter(x=>getComputedStyle(x).display!=='none').map(x=>x.querySelector('b').textContent.trim())")
+              print('CATEGORY',cat,json.dumps(visible,ensure_ascii=False))
+              for name in need: check(name in visible,f'{name} missing from {cat}')
+
+            for role,task,field,label in [('school_student','learn','level','دانش‌آموز'),('graphic_designer','brief','brand_context','گرافیست'),('executive','schedule','school_level','مسئول اجرایی'),('specialist','report','organization','کارشناس')]:
+              load()
+              js("r112PickRole(arguments[0]);r11Move(1);r115PickTask(arguments[1]);r11Move(1);selectAi('chatgpt');r11Move(1)",role,task)
+              WebDriverWait(d,6).until(lambda x: x.execute_script("return document.documentElement.classList.contains('r19-workspace-active')"))
+              value=js("return document.querySelector('#r11RoleInput')?.value")
+              hasfield=js("return !!document.querySelector('#r11DynamicFields [data-r13-field=\"'+arguments[0]+'\"]')",field)
+              print('ROUTE',role,task,value,field,hasfield)
+              check(value==label,f'{role} label lost: {value}')
+              check(hasfield,f'{role} missing dynamic field {field}')
+
+            bad=[x['message'] for x in d.get_log('browser') if x.get('level')=='SEVERE' and 'favicon.ico' not in x.get('message','')]
+            check(not bad,'console: '+' | '.join(bad[:4]))
+            if failures:
+              print('ASSERT_FAIL',json.dumps(failures,ensure_ascii=False));sys.exit(1)
+            print('ASSERT_PASS role split')
+          finally:d.quit()
+          PY
