@@ -10,13 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply role split across core and dynamic schemas
+      - name: Apply role split to production files
         shell: bash
         run: |
           node - <<'NODE'
           const fs=require('fs'),zlib=require('zlib');
 
-          // 1) Patch boot-time legacy runtime before it is externalized.
           let index=fs.readFileSync('index.html','utf8');
           const oldBlock=`    if(legacyMatch){\n      const runtimeUrl=URL.createObjectURL(new Blob([legacyMatch.code],{type:'text/javascript'}));\n      window.__RAVAN_LEGACY_RUNTIME_URL=runtimeUrl;\n      window.__RAVAN_LEGACY_RUNTIME_RECOVERY='19.16';\n      const recoveredTag='<script src="'+runtimeUrl+'" data-ravan-legacy-runtime="19.16"><\\/script>';`;
           const newBlock=`    if(legacyMatch){\n      let legacyCode=legacyMatch.code;\n      const expandedRoles=\"const r11Roles=[\\n['teacher','📚','معلم','تدریس، طرح درس، آزمون و محتوای آموزشی'],['designer','🎨','طراح','Brief طراحی، رابط کاربری، ارائه و سیستم بصری'],['graphic_designer','🖌️','گرافیست','پوستر، بنر، هویت بصری و پرامپت تصویر'],['researcher','🔎','پژوهشگر','منابع، مرور ادبیات، تحلیل مقاله و گزارش پژوهشی'],['student','🎓','دانشجو','یادگیری دانشگاهی، پژوهش، خلاصه و ارائه'],['school_student','📘','دانش‌آموز','یادگیری درس، تمرین، آزمونک و برنامه مطالعه'],['manager','📊','مدیر','تصمیم‌گیری، گزارش، برنامه‌ریزی و جلسات'],['deputy','🏫','معاون','برنامه مدرسه، هماهنگی، گزارش و پیگیری'],['executive','📋','مسئول اجرایی','اجرای برنامه‌ها، پیگیری امور، گزارش و هماهنگی'],['creator','✍️','تولیدکننده محتوا','مقاله، شبکه اجتماعی، سناریو و تقویم محتوا'],['programmer','💻','برنامه‌نویس','کدنویسی، رفع خطا، مستندسازی و معماری'],['specialist','🧩','کارشناس','تحلیل، گزارش تخصصی، مستندسازی و پیگیری'],['admin','🗂️','کارمند اداری','نامه، صورت‌جلسه، فرم و گردش کار'],['other','＋','سایر','نقش دیگری دارم و خودم آن را مشخص می‌کنم']];\";\n      legacyCode=legacyCode.replace(/const r11Roles=\\[[\\s\\S]*?\\];\\s*const r11Tasks=/,expandedRoles+'\\nconst r11Tasks=');\n      legacyCode=legacyCode.replace(\"function r115TaskItems(){return (r11Tasks[r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}\",\"function r115TaskItems(){const alias={school_student:'student',graphic_designer:'designer',executive:'deputy',specialist:'admin'};return (r11Tasks[alias[r11State.role]||r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}\");\n      const runtimeUrl=URL.createObjectURL(new Blob([legacyCode],{type:'text/javascript'}));\n      window.__RAVAN_LEGACY_RUNTIME_URL=runtimeUrl;\n      window.__RAVAN_LEGACY_RUNTIME_RECOVERY='19.29';\n      const recoveredTag='<script src="'+runtimeUrl+'" data-ravan-legacy-runtime="19.29"><\\/script>';`;
@@ -26,7 +25,6 @@ jobs:
             .replace('ravan-ui-v19.js?v=19.17','ravan-ui-v19.js?v=19.29');
           fs.writeFileSync('index.html',index);
 
-          // 2) Patch the compressed dynamic schema so new roles inherit the correct specialist fields.
           let dyn=fs.readFileSync('ravan-dynamic-v13.js','utf8');
           const m=dyn.match(/atob\("([A-Za-z0-9+/=]+)"\)/);
           if(!m) throw new Error('dynamic payload not found');
@@ -41,21 +39,16 @@ jobs:
           dyn=dyn.replace(/atob\("[A-Za-z0-9+/=]+"\)/,'atob("'+b64+'")');
           fs.writeFileSync('ravan-dynamic-v13.js',dyn);
 
-          // 3) Expand category matching and icon decoration for the separated cards.
           let ui=fs.readFileSync('ravan-ui-v19.js','utf8');
           ui=ui.replace(" 'کسب‌وکار':['مدیر','کسب','بازاری','محصول','فروش','کارآفرین','مشاور'],"," 'کسب‌وکار':['مدیر','کسب','بازاری','محصول','فروش','کارآفرین','مشاور','مسئول اجرایی','اجرایی','کارشناس','کارمند','اداری'],")
                .replace(" 'آموزش':['معلم','دانش','آموز','استاد','آموزش'],"," 'آموزش':['معلم','دانش','آموز','استاد','آموزش','معاون','مدرسه'],")
                .replace(" 'طراحی و خلاقیت':['طراح','گرافیک','هنر','خلاق'],"," 'طراحی و خلاقیت':['طراح','گرافیک','گرافیست','بصری','هنر','خلاق'],")
                .replace('/طراح|گرافیک|هنر|خلاق/.test(t)','/طراح|گرافیک|گرافیست|هنر|خلاق/.test(t)');
           fs.writeFileSync('ravan-ui-v19.js',ui);
-
-          // 4) Add a permanent regression that verifies role identity, categories and dynamic alias routing.
-          const regression=`name: RAVAN separated roles regression\non:\n  push:\n    paths:\n      - 'index.html'\n      - 'ravan-dynamic-v13.js'\n      - 'ravan-ui-v19.js'\n      - '.github/workflows/role-split-regression.yml'\npermissions:\n  contents: read\njobs:\n  roles:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: python -m pip install -q selenium\n      - name: Test separated roles\n        shell: bash\n        run: |\n          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &\n          sleep 2\n          python - <<'PY'\n          from selenium import webdriver\n          from selenium.webdriver.chrome.options import Options\n          from selenium.webdriver.support.ui import WebDriverWait\n          import json,time,sys\n          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')\n          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})\n          d=webdriver.Chrome(options=o); failures=[]\n          def js(code,*args): return d.execute_script(code,*args)\n          def check(cond,msg):\n            if not cond: failures.append(msg)\n          def load():\n            d.get('http://127.0.0.1:8765/?role-split=19.29')\n            WebDriverWait(d,12).until(lambda x: len(x.find_elements('css selector','.r112-role-option'))>=14)\n          try:\n            load()\n            expected={'teacher':'معلم','designer':'طراح','graphic_designer':'گرافیست','researcher':'پژوهشگر','student':'دانشجو','school_student':'دانش‌آموز','manager':'مدیر','deputy':'معاون','executive':'مسئول اجرایی','creator':'تولیدکننده محتوا','programmer':'برنامه‌نویس','specialist':'کارشناس','admin':'کارمند اداری','other':'سایر'}\n            cards=js(\"return Object.fromEntries([...document.querySelectorAll('.r112-role-option')].map(x=>[x.dataset.role,x.querySelector('b')?.textContent.trim()]))\")\n            print('CARDS',json.dumps(cards,ensure_ascii=False));check(len(cards)==14,'expected 14 role cards')\n            for k,v in expected.items():check(cards.get(k)==v,f'{k} title mismatch: {cards.get(k)}')\n            check(not any('/' in (v or '') for v in cards.values()),'combined role title still present')\n            for cat,need in [('آموزش',['معلم','دانش‌آموز','دانشجو','معاون']),('طراحی و خلاقیت',['طراح','گرافیست']),('کسب‌وکار',['مدیر','مسئول اجرایی','کارشناس','کارمند اداری'])]:\n              js(\"[...document.querySelectorAll('.r19-cat')].find(x=>x.textContent.trim()===arguments[0]).click()\",cat);time.sleep(.12)\n              visible=js(\"return [...document.querySelectorAll('.r112-role-option')].filter(x=>!x.hidden).map(x=>x.querySelector('b').textContent.trim())\")\n              print('CATEGORY',cat,json.dumps(visible,ensure_ascii=False))\n              for name in need:check(name in visible,f'{name} missing from {cat}')\n            cases=[('school_student','learn','level','دانش‌آموز'),('graphic_designer','brief','brand_context','گرافیست'),('executive','schedule','school_level','مسئول اجرایی'),('specialist','report','organization','کارشناس')]\n            for role,task,field,label in cases:\n              load();js(\"r112PickRole(arguments[0]); r11Move(1); r115PickTask(arguments[1]); r11Move(1); selectAi('chatgpt'); r11Move(1)\",role,task);time.sleep(.4)\n              check(js(\"return document.querySelector('#r11RoleInput')?.value\")==label,f'{role} label not preserved')\n              check(js(\"return document.documentElement.classList.contains('r19-workspace-active')\"),f'{role} workspace not active')\n              check(js(\"return !!document.querySelector('#r11DynamicFields [data-r13-field=\\\"'+arguments[0]+'\\\"]')\",field),f'{role} missing inherited field {field}')\n            logs=d.get_log('browser');bad=[]\n            for row in logs:\n              if row.get('level')=='SEVERE' and 'favicon.ico' not in row.get('message',''): bad.append(row.get('message',''))\n            check(not bad,'severe console errors: '+' | '.join(bad[:5]))\n            if failures:\n              print('ASSERT_FAIL',json.dumps(failures,ensure_ascii=False));sys.exit(1)\n            print('ASSERT_PASS separated roles')\n          finally:d.quit()\n          PY\n`;
-          fs.writeFileSync('.github/workflows/role-split-regression.yml',regression);
           NODE
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html ravan-dynamic-v13.js ravan-ui-v19.js .github/workflows/role-split-regression.yml
+          git add index.html ravan-dynamic-v13.js ravan-ui-v19.js
           git commit -m "Split combined roles into independent categories"
           git push
