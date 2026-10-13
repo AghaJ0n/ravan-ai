@@ -1,4 +1,5 @@
 name: RAVAN separated roles regression
+# regression revision: 2
 on:
   push:
     paths:
