@@ -1,4 +1,4 @@
-/* RAVAN AI v19.37 — bootstrap + first-step readiness guard */
+/* RAVAN AI v19.38 — bootstrap + rendered-content readiness guard */
 
 /* Prevent the decompressed legacy interface from being painted while the
    consolidated SaaS shell is still being built. */
@@ -6,7 +6,6 @@ body:not(:has(.r19-app)){
   visibility:hidden!important;
 }
 
-/* Keep the page background stable while bootstrap is intentionally covered. */
 html{
   background:#f5f7fb;
 }
@@ -14,65 +13,57 @@ html{
   html{background:#101526}
 }
 
-/* The shell itself can exist a little earlier than its role catalogue. That
-   intermediate state was the visible flash reported by users: the correct
-   RAVAN chrome appeared, but the role grid was still empty and the temporary
-   "no matching item" message was visible. Cover that state until at least one
-   real role option exists. The overlay is rendered on <html>, so it survives
-   body reconstruction performed by ravan-ui-v19.js. */
-html:has(.r19-app):not(:has(.r112-role-option))::before{
+/* A .r19-app can exist before its first-step cards are actually painted.
+   ravan-navigation-v19.js adds .r19-first-ready only after real visible cards
+   survive two consecutive animation frames. Until then keep a branded cover
+   above the partially rendered shell. */
+html:has(.r19-app):not(.r19-first-ready)::before{
   content:"";
   position:fixed;
   inset:0;
-  z-index:2147482998;
+  z-index:2147483645;
   display:block;
+  visibility:visible;
+  opacity:1;
+  pointer-events:auto;
   background:
     radial-gradient(circle at 50% 47%,rgba(98,70,234,.12),transparent 24%),
     linear-gradient(180deg,#fbfcff 0%,#f4f6fb 100%);
-  animation:r19ReadyCoverFallback 2.2s 1.2s both;
 }
-html:has(.r19-app):not(:has(.r112-role-option))::after{
+html:has(.r19-app):not(.r19-first-ready)::after{
   content:"RAVAN AI";
   position:fixed;
-  z-index:2147482999;
+  z-index:2147483646;
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
   min-width:150px;
+  min-height:118px;
   padding-top:90px;
+  box-sizing:border-box;
   text-align:center;
   direction:ltr;
   font:900 29px/1 Tahoma,"Segoe UI",sans-serif;
   letter-spacing:.8px;
   color:#172033;
   background:
-    radial-gradient(circle at 50% 35px,rgba(98,70,234,.18) 0 28px,transparent 29px),
+    radial-gradient(circle at 50% 35px,rgba(98,70,234,.18) 0 34px,transparent 35px),
     linear-gradient(145deg,#765bf5,#5939df) 50% 0/72px 72px no-repeat;
   border-radius:24px;
   pointer-events:none;
-  animation:r19ReadyCoverFallback 2.2s 1.2s both;
-}
-@keyframes r19ReadyCoverFallback{
-  0%,82%{opacity:1;visibility:visible}
-  100%{opacity:0;visibility:hidden}
 }
 @media(prefers-color-scheme:dark){
-  html:has(.r19-app):not(:has(.r112-role-option))::before{
+  html:has(.r19-app):not(.r19-first-ready)::before{
     background:
       radial-gradient(circle at 50% 47%,rgba(139,112,255,.18),transparent 27%),
       linear-gradient(180deg,#12182a 0%,#0f1423 100%);
   }
-  html:has(.r19-app):not(:has(.r112-role-option))::after{color:#f3f5ff}
-}
-@media(prefers-reduced-motion:reduce){
-  html:has(.r19-app):not(:has(.r112-role-option))::before,
-  html:has(.r19-app):not(:has(.r112-role-option))::after{animation:none}
+  html:has(.r19-app):not(.r19-first-ready)::after{color:#f3f5ff}
 }
 
-/* Do not call an unrendered catalogue "empty". The empty-state message is
-   only meaningful after options have actually been created. */
-.r112-role-box:not(:has(.r112-role-option)) .r19-choice-empty,
-.r115-task-box:not(:has(.r115-task-option)) .r19-choice-empty{
+/* Never expose the temporary empty-search message while initial options are
+   still settling. */
+html:not(.r19-first-ready) .r19-choice-empty{
   display:none!important;
 }
 
