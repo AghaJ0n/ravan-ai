@@ -2,8 +2,17 @@
 (()=>{
 'use strict';
 const root=document.documentElement;
-root.dataset.ravanPersistentNav='19.39';
+root.dataset.ravanPersistentNav='19.40';
 root.classList.remove('r19-first-ready');
+
+/* The loader must cover the app, not prevent layout. The inline bootstrap guard
+   initially hides body children to avoid any parser flash; once this controller
+   runs, remove only that visibility rule so cards can receive real layout while
+   the opaque html loader remains above them. */
+const bootGuard=document.getElementById('ravan-pre-shell-guard');
+if(bootGuard){
+  bootGuard.textContent=bootGuard.textContent.replace('html:not(.r19-first-ready) body>*{visibility:hidden!important}','');
+}
 
 const visible=(el)=>{
   if(!el || el.hidden) return false;
@@ -19,7 +28,6 @@ function appViewReady(){
   const app=document.querySelector('.r19-app');
   if(!app) return false;
 
-  /* Utility/workspace views do not need the role catalogue. */
   if(visible(document.querySelector('.r19-utility-view.open'))) return true;
   const ws=document.querySelector('#r11Workspace.open,.r11-workspace.open');
   if(visible(ws)) return true;
@@ -51,9 +59,6 @@ function probe(){
   if(done) return;
   if(appViewReady()) stableFrames++; else stableFrames=0;
 
-  /* Release as soon as the active view is genuinely painted for two consecutive
-     frames. The long timeout is only a recovery path; it is not part of normal
-     loader timing. */
   if(stableFrames>=2){
     release('visible-content');
     return;
