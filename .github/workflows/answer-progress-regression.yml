@@ -1,0 +1,97 @@
+name: RAVAN answered question progress regression
+on:
+  push:
+    paths:
+      - 'ravan-navigation-v19.js'
+      - 'ravan-ui-v19.js'
+      - 'ravan-dynamic-v13.js'
+      - '.github/workflows/answer-progress-regression.yml'
+permissions:
+  contents: read
+jobs:
+  chrome-answer-progress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Verify progress follows questionnaire answers
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-progress-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          import json,sys,time
+
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs',{'browser':'ALL'})
+          d=webdriver.Chrome(options=o)
+          wait=WebDriverWait(d,20)
+          try:
+            d.get('http://127.0.0.1:8765/?answer-progress=19.41')
+            wait.until(lambda x:x.execute_script("return typeof r112PickRole==='function' && !!document.querySelector('.r19-nav')"))
+            d.execute_script("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)")
+            wait.until(lambda x:x.execute_script("return !!document.querySelector('#r11TeacherAdvanced button')"))
+            d.execute_script("document.querySelector('#r11TeacherAdvanced button').click()")
+            wait.until(lambda x:x.execute_script("return document.documentElement.classList.contains('r19-professional-active')"))
+            wait.until(lambda x:x.execute_script("return (document.documentElement.dataset.ravanQuestionProgress||'').includes('/')"))
+            time.sleep(.2)
+
+            before=d.execute_script("return {q:document.documentElement.dataset.ravanQuestionProgress||'',p:Number(document.documentElement.dataset.ravanProgressPercent||0),txt:document.querySelector('#r19Progress')?.innerText||'',v:document.documentElement.dataset.ravanAnswerProgress||''}")
+            print('BEFORE',json.dumps(before,ensure_ascii=False))
+            if before['v']!='19.41':
+              print('ASSERT_FAIL answer progress controller missing');sys.exit(1)
+            a0,t0=map(int,before['q'].split('/'))
+            if t0<1:
+              print('ASSERT_FAIL questionnaire total is zero');sys.exit(1)
+            if before['p']<75 or before['p']>100:
+              print('ASSERT_FAIL progress percent out of expected range');sys.exit(1)
+
+            changed=d.execute_script("""
+              const controls=[...document.querySelectorAll('#r19ProfessionalHost section.step input,#r19ProfessionalHost section.step textarea,#r19ProfessionalHost section.step select')]
+                .filter(el=>!el.disabled && !['hidden','button','submit','reset','image'].includes((el.type||'').toLowerCase()) && !el.closest('[role=dialog],.modal,[class*=modal],[class*=overlay],[id*=Modal],[id*=Overlay]'));
+              const value=el=>{
+                const t=(el.type||'').toLowerCase();
+                if(t==='checkbox'||t==='radio')return el.checked?'1':'';
+                if(el.tagName==='SELECT')return String(el.value||'').trim();
+                return String(el.value||'').trim();
+              };
+              let el=controls.find(x=>!value(x));
+              if(!el)return false;
+              const t=(el.type||'').toLowerCase();
+              if(t==='checkbox'||t==='radio')el.checked=true;
+              else if(el.tagName==='SELECT'){
+                const opt=[...el.options].find(o=>String(o.value||'').trim());
+                if(!opt)return false;
+                el.value=opt.value;
+              }else el.value='پاسخ تست پیشرفت';
+              el.dispatchEvent(new Event('input',{bubbles:true}));
+              el.dispatchEvent(new Event('change',{bubbles:true}));
+              return true;
+            """)
+            if not changed:
+              print('ASSERT_FAIL no unanswered professional question found');sys.exit(1)
+
+            wait.until(lambda x:x.execute_script("return (document.documentElement.dataset.ravanQuestionProgress||'')!==arguments[0]",before['q']))
+            time.sleep(.15)
+            after=d.execute_script("return {q:document.documentElement.dataset.ravanQuestionProgress||'',p:Number(document.documentElement.dataset.ravanProgressPercent||0),txt:document.querySelector('#r19Progress')?.innerText||''}")
+            print('AFTER',json.dumps(after,ensure_ascii=False))
+            a1,t1=map(int,after['q'].split('/'))
+            if t1!=t0 or a1<=a0:
+              print('ASSERT_FAIL answered-question count did not increase');sys.exit(1)
+            if after['p']<before['p']:
+              print('ASSERT_FAIL progress percent moved backwards after answering');sys.exit(1)
+            if f'{a1} از {t1}' not in after['txt']:
+              print('ASSERT_FAIL sidebar does not show live answered/total count');sys.exit(1)
+            if a1<t1 and after['p']>=100:
+              print('ASSERT_FAIL progress reached 100 before all questions were answered');sys.exit(1)
+
+            bad=[x for x in d.get_log('browser') if x.get('level')=='SEVERE' and 'favicon.ico' not in x.get('message','')]
+            if bad:
+              print('ASSERT_FAIL severe browser errors',json.dumps(bad[:5]));sys.exit(1)
+            print('ASSERT_PASS answered-question progress is live')
+          finally:
+            d.quit()
+          PY
