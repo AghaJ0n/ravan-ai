@@ -116,17 +116,21 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
       console.error('[RAVAN] legacy runtime block was not found');
     }
 
-    /* Legacy welcome/home must never flash before the consolidated bridge runs. */
+    /* Block every legacy paint inside the rewritten document. This guard is
+       inline in <head>, so it applies before external CSS or legacy markup can
+       render. The body is revealed only after the consolidated .r19-app shell
+       exists and has survived two animation frames. */
+    const preShellGuard='<style id="ravan-pre-shell-guard">html{background:#f5f7fb}body{visibility:hidden!important;opacity:0!important}html.r19-shell-ready body{visibility:visible!important;opacity:1!important;transition:opacity 140ms ease}@media(prefers-color-scheme:dark){html{background:#101526}}</style><script id="ravan-pre-shell-script">(function(){var done=false;function show(){if(done||!document.querySelector(".r19-app"))return;done=true;requestAnimationFrame(function(){requestAnimationFrame(function(){document.documentElement.classList.add("r19-shell-ready")})})}var mo=new MutationObserver(function(){show();if(done)mo.disconnect()});mo.observe(document.documentElement,{childList:true,subtree:true});if(document.readyState!=="loading")show();else document.addEventListener("DOMContentLoaded",show,{once:true});setTimeout(show,4000)})()<\/script>';
     const legacyOverlayGuard='<style id="ravan-legacy-overlay-guard">#welcomeOverlay,#homeOverlayV7{display:none!important;visibility:hidden!important;pointer-events:none!important}</style>';
-    const styles=legacyOverlayGuard+'<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.17"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.17"><link rel="stylesheet" href="ravan-components-v19.css?v=19.17"><link rel="stylesheet" href="ravan-sections-v19.css?v=19.17"><link rel="stylesheet" href="ravan-navigation-v19.css?v=19.20"><link rel="stylesheet" href="ravan-shell-fix-v19.css?v=19.21"><link rel="stylesheet" href="ravan-scroll-shell-v19.css?v=19.32">';
+    const styles=preShellGuard+legacyOverlayGuard+'<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.17"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.17"><link rel="stylesheet" href="ravan-components-v19.css?v=19.17"><link rel="stylesheet" href="ravan-sections-v19.css?v=19.17"><link rel="stylesheet" href="ravan-navigation-v19.css?v=19.20"><link rel="stylesheet" href="ravan-shell-fix-v19.css?v=19.21"><link rel="stylesheet" href="ravan-scroll-shell-v19.css?v=19.32">';
     const scripts='<script src="ravan-dynamic-v13.js?v=13.1"><\/script><script src="ravan-core-bridge-v19.js?v=19.32"><\/script><script src="ravan-ui-v19.js?v=19.29"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-profile-management-v19.js?v=19.22"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.20"><\/script>';
     html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
 
     const remaining=Math.max(0,BOOT_MIN_MS-(performance.now()-bootStarted));
     if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
-    if(boot)boot.classList.add('boot-ready');
-    const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(!reduced)await new Promise(resolve=>setTimeout(resolve,370));
+    /* Keep the logo fully covering the old document until the rewrite starts.
+       The inline preShellGuard then owns the transition and prevents a single
+       legacy frame from becoming visible. */
     document.open(); document.write(html); document.close();
   } catch(e) {
     if(boot){
