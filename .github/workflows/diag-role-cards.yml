@@ -23,14 +23,10 @@ jobs:
           o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
           d=webdriver.Chrome(options=o)
           try:
-            d.get('http://127.0.0.1:8765/?diag-role=1');time.sleep(4)
-            data=d.execute_script("""
-            return [...document.querySelectorAll('.r112-role-option')].map((o,i)=>({
-              i,text:o.innerText,html:o.outerHTML,
-              attrs:Object.fromEntries([...o.attributes].map(a=>[a.name,a.value]))
-            }));
-            """)
-            print('ROLE_CARDS',json.dumps(data,ensure_ascii=False))
-            print('INPUT',json.dumps(d.execute_script("return {input:document.querySelector('#r11RoleInput,.r112-role-input')?.outerHTML,state:window.r11State||null, pick:typeof window.r112PickRole, move:typeof window.r11Move}"),ensure_ascii=False))
+            d.get('http://127.0.0.1:8765/?diag-role=2');time.sleep(4)
+            print('PICK_SOURCE',d.execute_script("return String(window.r112PickRole)"))
+            print('MOVE_SOURCE',d.execute_script("return String(window.r11Move)"))
+            print('ROLE_GLOBALS',json.dumps(d.execute_script("return Object.keys(window).filter(k=>/role/i.test(k)).sort()"),ensure_ascii=False))
+            print('SAMPLE_AFTER',json.dumps(d.execute_script("r112PickRole('student');return {value:document.querySelector('#r11RoleInput').value,step:document.querySelector('.r11-section.active')?.dataset.r11step||null,keys:Object.keys(window).filter(k=>/^r11/i.test(k)).slice(0,80)}"),ensure_ascii=False))
           finally:d.quit()
           PY
