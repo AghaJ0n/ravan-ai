@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python -m pip install -q selenium
-      - name: Verify no legacy frame is ever paintable during real bootstrap
+      - name: Verify branded cover hides every legacy frame during real bootstrap
         shell: bash
         run: |
           python -m http.server 8765 >/tmp/ravan-bootstrap-http.log 2>&1 &
@@ -31,45 +31,54 @@ jobs:
           o.set_capability('pageLoadStrategy','none')
           o.set_capability('goog:loggingPrefs',{'browser':'ALL'})
           d=webdriver.Chrome(options=o)
-          states=[]; exposed=[]
+          states=[]; exposed=[]; handoff_samples=[]
           try:
             started=time.time()
-            d.get('http://127.0.0.1:8765/?flash-regression=19.35')
-            deadline=started+8.0
+            d.get('http://127.0.0.1:8765/?flash-regression=19.36')
+            deadline=started+9.0
             while time.time()<deadline:
               try:
                 s=d.execute_script("""
-                  const b=document.body, app=document.querySelector('.r19-app'), boot=document.getElementById('boot');
+                  const b=document.body, app=document.querySelector('.r19-app'), boot=document.getElementById('boot'), handoff=document.getElementById('ravanBootHandoff');
                   const cs=b?getComputedStyle(b):null;
-                  const bootVisible=!!boot && getComputedStyle(boot).visibility!=='hidden' && getComputedStyle(boot).opacity!=='0';
+                  const visible=el=>!!el && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden' && getComputedStyle(el).opacity!=='0';
+                  const bootVisible=visible(boot), handoffVisible=visible(handoff);
+                  const center=document.elementFromPoint(Math.floor(innerWidth/2),Math.floor(innerHeight/2));
+                  const handoffOnTop=!!(handoffVisible && center && (center===handoff || center.closest?.('#ravanBootHandoff')));
                   return {t:performance.now(), ready:document.readyState, hasBody:!!b, hasApp:!!app,
                     nav:document.querySelectorAll('.r19-navitem').length,
-                    boot:bootVisible,
+                    boot:bootVisible,handoff:handoffVisible,handoffOnTop,
                     visibility:cs?cs.visibility:'none', opacity:cs?cs.opacity:'none'};
                 """)
                 states.append(s)
-                # The only legal paint states are: the intentional logo splash,
-                # a hidden rewritten body, or the final consolidated app.
-                if s['hasBody'] and not s['boot'] and not s['hasApp'] and s['visibility']!='hidden' and s['opacity']!='0':
-                  exposed.append(s)
-                if s['hasApp'] and s['nav']>=6 and s['visibility']=='visible':
+                if s['handoff']:
+                  handoff_samples.append(s)
+                # Before the final shell exists, the user must see either the
+                # original splash or the rewritten branded handoff cover.
+                if s['hasBody'] and not s['hasApp'] and not s['boot']:
+                  if not s['handoff'] or not s['handoffOnTop']:
+                    exposed.append(s)
+                if s['hasApp'] and s['nav']>=6:
                   break
               except Exception:
                 pass
               time.sleep(.02)
 
-            final=d.execute_script("return {hasApp:!!document.querySelector('.r19-app'),nav:document.querySelectorAll('.r19-navitem').length,visibility:getComputedStyle(document.body).visibility,opacity:getComputedStyle(document.body).opacity}")
+            final=d.execute_script("return {hasApp:!!document.querySelector('.r19-app'),nav:document.querySelectorAll('.r19-navitem').length,handoff:!!document.getElementById('ravanBootHandoff')}")
             print('SAMPLE_COUNT',len(states))
+            print('HANDOFF_SAMPLES',len(handoff_samples))
             print('EXPOSED_STATES',json.dumps(exposed[:10]))
             print('FINAL',json.dumps(final))
             if exposed:
-              print('ASSERT_FAIL legacy body became paintable before .r19-app existed');sys.exit(1)
-            if not final['hasApp'] or final['nav']<6 or final['visibility']!='visible':
-              print('ASSERT_FAIL consolidated shell did not become visible');sys.exit(1)
+              print('ASSERT_FAIL a legacy frame was not covered before .r19-app existed');sys.exit(1)
+            if not handoff_samples:
+              print('ASSERT_FAIL rewritten branded handoff cover was never observed');sys.exit(1)
+            if not final['hasApp'] or final['nav']<6:
+              print('ASSERT_FAIL consolidated shell did not become ready');sys.exit(1)
             bad=[x for x in d.get_log('browser') if x.get('level')=='SEVERE' and 'favicon.ico' not in x.get('message','')]
             if bad:
               print('ASSERT_FAIL severe browser errors',json.dumps(bad[:5]));sys.exit(1)
-            print('ASSERT_PASS zero legacy paint frames during real bootstrap')
+            print('ASSERT_PASS splash/handoff continuously covers legacy bootstrap')
           finally:
             d.quit()
           PY
