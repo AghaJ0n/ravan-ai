@@ -4,6 +4,7 @@ on:
     paths:
       - 'index.html'
       - 'ravan-shell-fix-v19.css'
+      - 'ravan-navigation-v19.js'
       - '.github/workflows/bootstrap-flash-regression.yml'
 permissions:
   contents: read
@@ -13,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python -m pip install -q selenium
-      - name: Verify branded cover hides every legacy frame during real bootstrap
+      - name: Verify no incomplete RAVAN shell is exposed before visible role cards
         shell: bash
         run: |
           python -m http.server 8765 >/tmp/ravan-bootstrap-http.log 2>&1 &
@@ -31,54 +32,61 @@ jobs:
           o.set_capability('pageLoadStrategy','none')
           o.set_capability('goog:loggingPrefs',{'browser':'ALL'})
           d=webdriver.Chrome(options=o)
-          states=[]; exposed=[]; handoff_samples=[]
+          states=[]; exposed=[]; premature=[]
           try:
             started=time.time()
-            d.get('http://127.0.0.1:8765/?flash-regression=19.36')
-            deadline=started+9.0
+            d.get('http://127.0.0.1:8765/?flash-regression=19.38')
+            deadline=started+10.0
             while time.time()<deadline:
               try:
                 s=d.execute_script("""
-                  const b=document.body, app=document.querySelector('.r19-app'), boot=document.getElementById('boot'), handoff=document.getElementById('ravanBootHandoff');
-                  const cs=b?getComputedStyle(b):null;
-                  const visible=el=>!!el && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden' && getComputedStyle(el).opacity!=='0';
-                  const bootVisible=visible(boot), handoffVisible=visible(handoff);
-                  const center=document.elementFromPoint(Math.floor(innerWidth/2),Math.floor(innerHeight/2));
-                  const handoffOnTop=!!(handoffVisible && center && (center===handoff || center.closest?.('#ravanBootHandoff')));
-                  return {t:performance.now(), ready:document.readyState, hasBody:!!b, hasApp:!!app,
+                  const root=document.documentElement;
+                  const app=document.querySelector('.r19-app');
+                  const visible=el=>{
+                    if(!el||el.hidden)return false;
+                    const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+                    return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>24&&r.height>24&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth;
+                  };
+                  const roles=[...document.querySelectorAll('.r112-role-option')].filter(visible).length;
+                  const ready=root.classList.contains('r19-first-ready');
+                  const cover=getComputedStyle(root,'::before');
+                  const coverVisible=!!app && cover.display!=='none' && cover.visibility!=='hidden' && Number(cover.opacity||1)>0;
+                  return {t:performance.now(),hasApp:!!app,ready,roles,cover:coverVisible,
                     nav:document.querySelectorAll('.r19-navitem').length,
-                    boot:bootVisible,handoff:handoffVisible,handoffOnTop,
-                    visibility:cs?cs.visibility:'none', opacity:cs?cs.opacity:'none'};
+                    marker:root.dataset.ravanFirstReady||''};
                 """)
                 states.append(s)
-                if s['handoff']:
-                  handoff_samples.append(s)
-                # Before the final shell exists, the user must see either the
-                # original splash or the rewritten branded handoff cover.
-                if s['hasBody'] and not s['hasApp'] and not s['boot']:
-                  if not s['handoff'] or not s['handoffOnTop']:
-                    exposed.append(s)
-                if s['hasApp'] and s['nav']>=6:
+                if s['hasApp'] and not s['ready'] and not s['cover']:
+                  exposed.append(s)
+                if s['ready'] and s['roles']<4:
+                  premature.append(s)
+                if s['ready'] and s['roles']>=4 and s['nav']>=6:
                   break
               except Exception:
                 pass
               time.sleep(.02)
 
-            final=d.execute_script("return {hasApp:!!document.querySelector('.r19-app'),nav:document.querySelectorAll('.r19-navitem').length,handoff:!!document.getElementById('ravanBootHandoff')}")
+            final=d.execute_script("""
+              const root=document.documentElement;
+              const visible=el=>{if(!el||el.hidden)return false;const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>24&&r.height>24;};
+              return {ready:root.classList.contains('r19-first-ready'),roles:[...document.querySelectorAll('.r112-role-option')].filter(visible).length,nav:document.querySelectorAll('.r19-navitem').length,marker:root.dataset.ravanFirstReady||''};
+            """)
             print('SAMPLE_COUNT',len(states))
-            print('HANDOFF_SAMPLES',len(handoff_samples))
-            print('EXPOSED_STATES',json.dumps(exposed[:10]))
+            print('EXPOSED_INCOMPLETE',json.dumps(exposed[:10]))
+            print('PREMATURE_READY',json.dumps(premature[:10]))
             print('FINAL',json.dumps(final))
             if exposed:
-              print('ASSERT_FAIL a legacy frame was not covered before .r19-app existed');sys.exit(1)
-            if not handoff_samples:
-              print('ASSERT_FAIL rewritten branded handoff cover was never observed');sys.exit(1)
-            if not final['hasApp'] or final['nav']<6:
-              print('ASSERT_FAIL consolidated shell did not become ready');sys.exit(1)
+              print('ASSERT_FAIL incomplete RAVAN shell became visible before first-step readiness');sys.exit(1)
+            if premature:
+              print('ASSERT_FAIL readiness class was set before visible role cards existed');sys.exit(1)
+            if not final['ready'] or final['roles']<4 or final['nav']<6:
+              print('ASSERT_FAIL final first-step UI did not become visibly ready');sys.exit(1)
+            if final['marker']!='visible-content':
+              print('ASSERT_FAIL readiness used timeout fallback instead of visible content');sys.exit(1)
             bad=[x for x in d.get_log('browser') if x.get('level')=='SEVERE' and 'favicon.ico' not in x.get('message','')]
             if bad:
               print('ASSERT_FAIL severe browser errors',json.dumps(bad[:5]));sys.exit(1)
-            print('ASSERT_PASS splash/handoff continuously covers legacy bootstrap')
+            print('ASSERT_PASS first visible RAVAN frame contains rendered role cards')
           finally:
             d.quit()
           PY
