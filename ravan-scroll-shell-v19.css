@@ -124,3 +124,42 @@
     overflow:visible!important;
   }
 }
+
+/* v19.31 — keep the primary role action and recent profiles visually separate.
+   Legacy CSS floats the role-next button, which lets the following saved-profile
+   block wrap around it. Use normal flow and a distinct recent-profile surface. */
+.r11-section[data-r11step="0"] .r112-role-next{
+  float:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:22px 0 0!important;
+  clear:both!important;
+}
+.r11-section[data-r11step="0"] .r11-saved{
+  clear:both!important;
+  width:100%!important;
+  margin:14px 0 0!important;
+  padding:13px 14px!important;
+  border:1px dashed var(--color-border)!important;
+  border-radius:12px!important;
+  background:var(--color-surface-soft)!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+.r11-section[data-r11step="0"] .r11-saved h3{
+  margin:0 0 9px!important;
+  line-height:1.6!important;
+}
+.r11-section[data-r11step="0"] .r11-pills{
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  flex-wrap:wrap!important;
+}
+@media(max-width:767px){
+  .r11-section[data-r11step="0"] .r112-role-next{margin-top:18px!important}
+  .r11-section[data-r11step="0"] .r11-saved{margin-top:12px!important;padding:12px!important}
+}
