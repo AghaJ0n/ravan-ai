@@ -30,28 +30,37 @@ jobs:
           d=webdriver.Chrome(options=o)
           wait=WebDriverWait(d,20)
           try:
-            d.get('http://127.0.0.1:8765/?answer-progress=19.41')
+            d.get('http://127.0.0.1:8765/?answer-progress=19.42')
             wait.until(lambda x:x.execute_script("return typeof r112PickRole==='function' && !!document.querySelector('.r19-nav')"))
             d.execute_script("r112PickRole('teacher'); r11Move(1); r115PickTask('lesson'); r11Move(1); selectAi('chatgpt'); r11Move(1)")
             wait.until(lambda x:x.execute_script("return !!document.querySelector('#r11TeacherAdvanced button')"))
             d.execute_script("document.querySelector('#r11TeacherAdvanced button').click()")
             wait.until(lambda x:x.execute_script("return document.documentElement.classList.contains('r19-professional-active')"))
             wait.until(lambda x:x.execute_script("return (document.documentElement.dataset.ravanQuestionProgress||'').includes('/')"))
-            time.sleep(.2)
+            time.sleep(.25)
 
-            before=d.execute_script("return {q:document.documentElement.dataset.ravanQuestionProgress||'',p:Number(document.documentElement.dataset.ravanProgressPercent||0),txt:document.querySelector('#r19Progress')?.innerText||'',v:document.documentElement.dataset.ravanAnswerProgress||''}")
+            before=d.execute_script("return {q:document.documentElement.dataset.ravanQuestionProgress||'',p:Number(document.documentElement.dataset.ravanProgressPercent||0),txt:document.querySelector('#r19Progress')?.innerText||'',v:document.documentElement.dataset.ravanAnswerProgress||'',mode:document.documentElement.dataset.ravanProgressMode||''}")
             print('BEFORE',json.dumps(before,ensure_ascii=False))
-            if before['v']!='19.41':
+            if before['v']!='19.42':
               print('ASSERT_FAIL answer progress controller missing');sys.exit(1)
             a0,t0=map(int,before['q'].split('/'))
             if t0<1:
               print('ASSERT_FAIL questionnaire total is zero');sys.exit(1)
             if before['p']<75 or before['p']>100:
               print('ASSERT_FAIL progress percent out of expected range');sys.exit(1)
+            if f'{a0} از {t0}' not in before['txt']:
+              print('ASSERT_FAIL initial sidebar does not show live answered/total count');sys.exit(1)
 
             changed=d.execute_script("""
-              const controls=[...document.querySelectorAll('#r19ProfessionalHost section.step input,#r19ProfessionalHost section.step textarea,#r19ProfessionalHost section.step select')]
+              const root=document.documentElement;
+              let controls=[...document.querySelectorAll('#r19ProfessionalHost section.step input,#r19ProfessionalHost section.step textarea,#r19ProfessionalHost section.step select')]
                 .filter(el=>!el.disabled && !['hidden','button','submit','reset','image'].includes((el.type||'').toLowerCase()) && !el.closest('[role=dialog],.modal,[class*=modal],[class*=overlay],[id*=Modal],[id*=Overlay]'));
+              const isRequired=el=>{
+                if(el.required||el.getAttribute('aria-required')==='true')return true;
+                const field=el.closest('.r11-field,[data-r13-field],.r13-field,.field,.form-group');
+                return !!field&&(field.matches('.required,[data-required="true"]')||!!field.querySelector('[required],[aria-required="true"]'));
+              };
+              if(root.dataset.ravanProgressMode==='required')controls=controls.filter(isRequired);
               const value=el=>{
                 const t=(el.type||'').toLowerCase();
                 if(t==='checkbox'||t==='radio')return el.checked?'1':'';
@@ -72,10 +81,10 @@ jobs:
               return true;
             """)
             if not changed:
-              print('ASSERT_FAIL no unanswered professional question found');sys.exit(1)
+              print('ASSERT_FAIL no unanswered tracked professional question found');sys.exit(1)
 
             wait.until(lambda x:x.execute_script("return (document.documentElement.dataset.ravanQuestionProgress||'')!==arguments[0]",before['q']))
-            time.sleep(.15)
+            time.sleep(.2)
             after=d.execute_script("return {q:document.documentElement.dataset.ravanQuestionProgress||'',p:Number(document.documentElement.dataset.ravanProgressPercent||0),txt:document.querySelector('#r19Progress')?.innerText||''}")
             print('AFTER',json.dumps(after,ensure_ascii=False))
             a1,t1=map(int,after['q'].split('/'))
