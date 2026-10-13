@@ -44,10 +44,10 @@ jobs:
             wait.until(lambda x: x.execute_script("return document.querySelectorAll('.r19-navitem').length>=6"))
             time.sleep(.25)
           try:
-            d.get('http://127.0.0.1:8765/?nav-e2e=19.20');wait_nav()
+            d.get('http://127.0.0.1:8765/?nav-e2e=19.40');wait_nav()
             boot=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect();return {v:document.documentElement.dataset.ravanPersistentNav||'',pos:getComputedStyle(n).position,display:getComputedStyle(n).display,top:r.top,right:innerWidth-r.right,width:r.width,visible:[...document.querySelectorAll('.r19-navitem')].filter(x=>getComputedStyle(x).display!='none').length}")
             print('DESKTOP_BOOT',json.dumps(boot,ensure_ascii=False))
-            check(boot['v']=='19.20','persistent nav module missing')
+            check(boot['v']=='19.40','persistent nav module missing')
             check(boot['pos']=='fixed','desktop navigation is not fixed')
             check(boot['display']!='none' and boot['width']>=200,'desktop navigation is not visibly expanded')
             check(boot['visible']==6,'desktop navigation does not expose build + five destinations')
@@ -91,7 +91,7 @@ jobs:
             check(not resumed['utilityOpen'],'utility page remained open after back')
             check(resumed['nav']!='none','navigation disappeared after resuming professional form')
 
-            d.set_window_size(390,844);d.get('http://127.0.0.1:8765/?nav-mobile-e2e=19.20');wait_nav()
+            d.set_window_size(390,844);d.get('http://127.0.0.1:8765/?nav-mobile-e2e=19.40');wait_nav()
             mobile=js("const n=document.querySelector('.r19-nav'),r=n.getBoundingClientRect(),items=[...document.querySelectorAll('.r19-navitem')];return {pos:getComputedStyle(n).position,bottom:innerHeight-r.bottom,visible:items.filter(x=>getComputedStyle(x).display!='none').length,dest:[1,2,3,4,5].map(i=>getComputedStyle(items[i]).display!='none')}")
             print('MOBILE',json.dumps(mobile,ensure_ascii=False))
             check(mobile['pos']=='fixed','mobile navigation is not fixed')
