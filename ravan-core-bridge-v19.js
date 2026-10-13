@@ -1,4 +1,4 @@
-/* RAVAN AI v19.16 — restore Core workspace, recovered legacy globals and professional teacher form */
+/* RAVAN AI v19.26 — restore Core workspace, recovered legacy globals and professional teacher form */
 (()=>{
 'use strict';
 
@@ -72,23 +72,31 @@ function attach(){
     document.documentElement.dataset.ravanWorkspaceBridge=restored?'restored-ready':'ready';
   }
   if(professionalHost.parentNode!==main)main.appendChild(professionalHost);
+  closeLegacyOverlays();
   document.documentElement.dataset.ravanProfessionalBridge=legacyNodes.length?'ready':'missing';
   attached=true;
   return true;
 }
 function tryAttach(){if(!attached)attach()}
 
+/* The old TeacherAI welcome/home cards are no longer part of RAVAN's product
+   flow. Keep their DOM only because the recovered professional runtime still
+   references it, but never allow those legacy landing overlays to become
+   visible. The current RAVAN workspace and persistent navigation are the only
+   supported entry points. */
 function closeLegacyOverlays(){
   const welcome=professionalHost.querySelector('#welcomeOverlay');
   const home=professionalHost.querySelector('#homeOverlayV7');
-  if(welcome)welcome.style.display='none';
-  if(home){
-    home.classList.remove('v7-home-open','open');
-    /* Do not leave inline display:none here: openHomeV7 relies on its class to
-       make the overlay visible again later. */
-    home.style.removeProperty('display');
+  for(const el of [welcome,home]){
+    if(!el)continue;
+    el.classList.remove('v7-home-open','open','show','active');
+    el.setAttribute('aria-hidden','true');
+    el.style.setProperty('display','none','important');
+    el.style.setProperty('visibility','hidden','important');
+    el.style.setProperty('pointer-events','none','important');
   }
 }
+closeLegacyOverlays();
 
 const originalTeacherAdvanced=typeof window.r11OpenTeacherAdvanced==='function'?window.r11OpenTeacherAdvanced:null;
 function enterProfessional(){
@@ -126,6 +134,7 @@ function exitProfessional(){
     workspace.style.removeProperty('display');
     workspace.classList.add('open');
   }
+  closeLegacyOverlays();
   document.documentElement.dataset.ravanProfessionalBridge=legacyNodes.length?'ready':'missing';
   window.RAVAN_UI?.refreshSide?.();
   window.scrollTo({top:0,behavior:'auto'});
@@ -143,6 +152,15 @@ document.addEventListener('click',e=>{
 },true);
 
 window.r11OpenTeacherAdvanced=enterProfessional;
+
+/* Any old control that still calls the legacy home function must not resurrect
+   the obsolete landing page. The persistent RAVAN navigation now owns those
+   destinations, so keep the call harmless and the overlay suppressed. */
+window.openHomeV7=function(){
+  closeLegacyOverlays();
+  return false;
+};
+
 window.RAVAN_PROFESSIONAL={open:enterProfessional,close:exitProfessional,host:professionalHost};
 returnBar.querySelector('#r19ProfessionalBack')?.addEventListener('click',exitProfessional);
 
@@ -153,7 +171,10 @@ requestAnimationFrame(()=>requestAnimationFrame(tryAttach));
 document.addEventListener('DOMContentLoaded',tryAttach,{once:true});
 window.addEventListener('load',tryAttach,{once:true});
 
-const observer=new MutationObserver(()=>{if(attach())observer.disconnect()});
-observer.observe(document.documentElement,{childList:true,subtree:true});
-setTimeout(()=>{tryAttach();observer.disconnect()},5000);
+const observer=new MutationObserver(()=>{
+  closeLegacyOverlays();
+  if(attach())observer.disconnect();
+});
+observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+setTimeout(()=>{tryAttach();closeLegacyOverlays();observer.disconnect()},5000);
 })();
