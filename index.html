@@ -5,21 +5,33 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RAVAN AI — روان</title>
 <meta name="description" content="میزکار هوشمند فارسی برای ساخت پرامپت و فرایندهای کاری بر اساس نقش، نوع کار و ابزار هوش مصنوعی.">
+<script>window.__RAVAN_BOOT_STARTED_AT=performance.now();</script>
 <style>
 html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;background:#f5f7fb;color:#172033}
-#boot{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:radial-gradient(circle at 50% 42%,rgba(98,70,234,.09),transparent 34%),linear-gradient(180deg,#fbfcff 0%,#f5f7fb 100%);opacity:1;visibility:visible;transition:opacity 140ms ease,visibility 140ms ease}
+#boot{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:24px;box-sizing:border-box;background:radial-gradient(circle at 50% 38%,rgba(98,70,234,.13),transparent 31%),radial-gradient(circle at 18% 82%,rgba(47,128,237,.06),transparent 28%),linear-gradient(180deg,#fbfcff 0%,#f3f6fc 100%);opacity:1;visibility:visible;transition:opacity 220ms ease,visibility 220ms ease}
 #boot.boot-ready{opacity:0;visibility:hidden;pointer-events:none}
-.boot-shell{display:grid;justify-items:center;gap:12px;text-align:center;direction:rtl}
-.boot-mark{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;background:linear-gradient(145deg,#7258f4,#5b3fe3);box-shadow:0 14px 34px rgba(98,70,234,.22)}
-.boot-mark svg{width:30px;height:30px;display:block}
-.boot-brand{font-size:21px;font-weight:800;letter-spacing:.2px;color:#172033}
-.boot-sub{font-size:12px;color:#7a8398;line-height:1.8}
-.boot-dots{height:10px;display:flex;gap:5px;align-items:center;direction:ltr;margin-top:2px}
-.boot-dots i{width:5px;height:5px;border-radius:999px;background:#6246ea;opacity:.28;animation:ravanBootDot 1s ease-in-out infinite}
-.boot-dots i:nth-child(2){animation-delay:.14s}.boot-dots i:nth-child(3){animation-delay:.28s}
-@keyframes ravanBootDot{0%,70%,100%{transform:translateY(0);opacity:.28}35%{transform:translateY(-3px);opacity:1}}
-@media (prefers-color-scheme:dark){html,body{background:#101526;color:#eef1ff}#boot{background:radial-gradient(circle at 50% 42%,rgba(139,112,255,.16),transparent 35%),linear-gradient(180deg,#12182a 0%,#0f1423 100%)}.boot-brand{color:#f3f5ff}.boot-sub{color:#9ca7be}}
-@media (prefers-reduced-motion:reduce){#boot{transition:none}.boot-dots i{animation:none}.boot-dots i:nth-child(2){opacity:.55}.boot-dots i:nth-child(3){opacity:.82}}
+.boot-shell{width:min(92vw,520px);box-sizing:border-box;display:grid;justify-items:center;gap:14px;padding:32px 30px 28px;text-align:center;direction:rtl;border:1px solid rgba(98,70,234,.12);border-radius:28px;background:rgba(255,255,255,.72);box-shadow:0 24px 70px rgba(43,54,91,.09);backdrop-filter:blur(16px)}
+.boot-mark{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(145deg,#765bf5,#5939df);box-shadow:0 16px 38px rgba(98,70,234,.27);animation:ravanBootFloat 2.1s ease-in-out infinite}
+.boot-mark svg{width:34px;height:34px;display:block}
+.boot-brand{font-size:24px;font-weight:850;letter-spacing:.3px;color:#172033;margin-top:2px}
+.boot-sub{font-size:13px;color:#667085;line-height:1.9;max-width:390px}
+.boot-status{min-height:22px;font-size:12px;font-weight:700;color:#6246ea;transition:opacity 160ms ease}
+.boot-steps{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:5px}
+.boot-step{min-width:0;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;padding:11px 10px;border:1px solid #e8eaf2;border-radius:14px;background:rgba(255,255,255,.8);color:#8a93a5;text-align:right;transition:border-color 180ms ease,background 180ms ease,color 180ms ease,transform 180ms ease}
+.boot-step-dot{width:25px;height:25px;border-radius:999px;display:grid;place-items:center;background:#f0edff;color:#765bf5;font-size:11px;font-weight:800;transition:all 180ms ease}
+.boot-step b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.boot-step small{display:block;font-size:9px;font-weight:400;margin-top:2px;color:#98a2b3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.boot-step.active{border-color:rgba(98,70,234,.34);background:#f6f3ff;color:#413070;transform:translateY(-1px)}
+.boot-step.active .boot-step-dot{background:#6246ea;color:#fff;box-shadow:0 5px 15px rgba(98,70,234,.2)}
+.boot-step.done{border-color:rgba(22,163,106,.2);background:#f3fbf7;color:#227551}
+.boot-step.done .boot-step-dot{background:#16a36a;color:#fff}
+.boot-progress{width:100%;height:5px;border-radius:999px;background:#eceef5;overflow:hidden;margin-top:3px;direction:rtl}
+.boot-progress-bar{width:14%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8b6cff,#6246ea);transition:width 420ms cubic-bezier(.2,.75,.3,1)}
+.boot-caption{font-size:10px;color:#9aa3b4;line-height:1.7}
+@keyframes ravanBootFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@media(max-width:560px){#boot{padding:16px}.boot-shell{padding:26px 18px 22px;border-radius:23px}.boot-steps{grid-template-columns:1fr}.boot-step{padding:9px 11px}.boot-mark{width:58px;height:58px}.boot-brand{font-size:22px}}
+@media (prefers-color-scheme:dark){html,body{background:#101526;color:#eef1ff}#boot{background:radial-gradient(circle at 50% 38%,rgba(139,112,255,.2),transparent 33%),linear-gradient(180deg,#12182a 0%,#0f1423 100%)}.boot-shell{background:rgba(19,26,45,.78);border-color:rgba(139,112,255,.17);box-shadow:0 24px 70px rgba(0,0,0,.24)}.boot-brand{color:#f3f5ff}.boot-sub,.boot-caption{color:#9ca7be}.boot-step{background:rgba(26,34,57,.78);border-color:#2a3551;color:#9ca7be}.boot-step small{color:#74809a}.boot-step.active{background:rgba(98,70,234,.16);color:#ddd6ff}.boot-step.done{background:rgba(22,163,106,.12);color:#a8e5ca}.boot-progress{background:#28334e}}
+@media (prefers-reduced-motion:reduce){#boot{transition:none}.boot-mark{animation:none}.boot-step,.boot-step-dot,.boot-progress-bar{transition:none}}
 </style>
 </head>
 <body>
@@ -35,8 +47,15 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
       </svg>
     </div>
     <div class="boot-brand">RAVAN AI</div>
-    <div class="boot-sub">در حال آماده‌سازی میزکار هوشمند</div>
-    <div class="boot-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="boot-sub">در حال آماده‌سازی فضای کاری هوشمند شما</div>
+    <div class="boot-status" id="bootStatus">بارگذاری پروفایل و تنظیمات</div>
+    <div class="boot-steps" aria-hidden="true">
+      <div class="boot-step active" data-boot-step="0"><span class="boot-step-dot">۱</span><span><b>پروفایل</b><small>شناخت نقش و ترجیحات</small></span></div>
+      <div class="boot-step" data-boot-step="1"><span class="boot-step-dot">۲</span><span><b>ابزارها</b><small>آماده‌سازی فرم و مسیر کار</small></span></div>
+      <div class="boot-step" data-boot-step="2"><span class="boot-step-dot">۳</span><span><b>فضای کاری</b><small>آماده برای شروع</small></span></div>
+    </div>
+    <div class="boot-progress" aria-hidden="true"><div class="boot-progress-bar" id="bootProgress"></div></div>
+    <div class="boot-caption">RAVAN مسیر کار را متناسب با نقش، انتخاب‌ها و ابزار هوش مصنوعی شما آماده می‌کند.</div>
   </div>
 </div>
 <script src="payload-1.js"></script>
@@ -51,6 +70,32 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
 <script src="payload-7.js"></script>
 <script>
 (async()=>{
+  const BOOT_MIN_MS=2500;
+  const bootStarted=window.__RAVAN_BOOT_STARTED_AT||performance.now();
+  const boot=document.getElementById('boot');
+  const bootStatus=document.getElementById('bootStatus');
+  const bootProgress=document.getElementById('bootProgress');
+  const bootSteps=[...document.querySelectorAll('[data-boot-step]')];
+  const bootLabels=['بارگذاری پروفایل و تنظیمات','آماده‌سازی ابزارها و مسیر کاری','فضای کاری شما آماده است','ورود به RAVAN'];
+  function setBootStage(stage){
+    bootSteps.forEach((el,i)=>{
+      el.classList.toggle('done',i<stage);
+      el.classList.toggle('active',i===stage&&stage<3);
+      const dot=el.querySelector('.boot-step-dot');
+      if(dot)dot.textContent=i<stage?'✓':String(i+1).replace(/1/g,'۱').replace(/2/g,'۲').replace(/3/g,'۳');
+    });
+    if(bootStatus)bootStatus.textContent=bootLabels[Math.min(stage,3)];
+    if(bootProgress)bootProgress.style.width=['16%','48%','82%','100%'][Math.min(stage,3)];
+  }
+  function scheduleStage(stage,at){
+    const delay=Math.max(0,bootStarted+at-performance.now());
+    setTimeout(()=>setBootStage(stage),delay);
+  }
+  setBootStage(0);
+  scheduleStage(1,720);
+  scheduleStage(2,1500);
+  scheduleStage(3,2200);
+
   try {
     const bin=atob(window.__RAVAN_B64||"");
     const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
@@ -101,15 +146,15 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
     const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.26"><\/script><script src="ravan-ui-v19.js?v=19.17"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-profile-management-v19.js?v=19.22"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.20"><\/script>';
     html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
 
-    const boot=document.getElementById('boot');
+    const remaining=Math.max(0,BOOT_MIN_MS-(performance.now()-bootStarted));
+    if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
+    setBootStage(3);
+    await new Promise(resolve=>setTimeout(resolve=>resolve(),180));
+    if(boot)boot.classList.add('boot-ready');
     const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(boot&&!reduced){
-      boot.classList.add('boot-ready');
-      await new Promise(resolve=>setTimeout(resolve,120));
-    }
+    if(!reduced)await new Promise(resolve=>setTimeout(resolve,230));
     document.open(); document.write(html); document.close();
   } catch(e) {
-    const boot=document.getElementById('boot');
     if(boot){
       boot.classList.remove('boot-ready');
       boot.innerHTML='<div class="boot-shell"><div class="boot-brand">RAVAN AI</div><div class="boot-sub">مرورگر نتوانست برنامه را بارگذاری کند. لطفاً از نسخه جدید Chrome یا Edge استفاده کنید.</div></div>';
