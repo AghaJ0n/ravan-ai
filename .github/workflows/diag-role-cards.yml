@@ -10,17 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect decompressed role source
+      - name: Inspect dynamic role routing
         shell: bash
         run: |
           node - <<'NODE'
-          const fs=require('fs'),vm=require('vm'),zlib=require('zlib');
-          global.window={};
-          for(const f of ['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js']){
-            vm.runInThisContext(fs.readFileSync(f,'utf8'),{filename:f});
-          }
-          const html=zlib.gunzipSync(Buffer.from(window.__RAVAN_B64,'base64')).toString('utf8');
-          for(const needle of ['r11Roles','function renderRoles','function renderTasks']){
-            const i=html.indexOf(needle);console.log('\n===',needle,'@',i,'===\n',html.slice(Math.max(0,i-700),i+2600));
+          const fs=require('fs'),zlib=require('zlib');
+          const src=fs.readFileSync('ravan-dynamic-v13.js','utf8');
+          const m=src.match(/atob\("([A-Za-z0-9+/=]+)"\)/);
+          if(!m)throw new Error('dynamic base64 not found');
+          const code=zlib.gunzipSync(Buffer.from(m[1],'base64')).toString('utf8');
+          for(const needle of ['teacher','student','designer','deputy','admin','role']){
+            let from=0,count=0;console.log('\n###',needle);
+            while((from=code.indexOf(needle,from))>=0&&count<8){
+              console.log(code.slice(Math.max(0,from-180),from+360).replace(/\n/g,' '));
+              from+=needle.length;count++;
+            }
           }
           NODE
