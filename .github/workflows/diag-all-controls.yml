@@ -26,6 +26,7 @@ jobs:
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.common.by import By
+          from selenium.webdriver.support.ui import WebDriverWait
           import json,time,sys
 
           o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
@@ -40,14 +41,14 @@ jobs:
           def modal_open(mid):
             return js("const e=document.getElementById(arguments[0]);return !!e && (e.classList.contains('open') || (getComputedStyle(e).display!=='none' && !e.hidden))",mid)
           try:
-            d.get('http://127.0.0.1:8765/?e2e=19.16')
-            time.sleep(2.5)
+            d.get('http://127.0.0.1:8765/?e2e=19.32')
+            WebDriverWait(d,20).until(lambda x:x.execute_script("return typeof r112PickRole==='function' && !!document.querySelector('.r19-nav')"))
             recovery=js("return {recovery:window.__RAVAN_LEGACY_RUNTIME_RECOVERY||'',move:typeof window.move,setStep:typeof window.setStep,bridge:document.documentElement.dataset.ravanBridgeLoaded||'',legacy:document.documentElement.dataset.ravanLegacyRuntime||''}")
             print('BOOT',json.dumps(recovery,ensure_ascii=False))
-            check(recovery['recovery']=='19.16','legacy runtime recovery marker missing')
+            check(recovery['recovery']=='19.29','legacy runtime recovery marker missing')
             check(recovery['move']=='function','move() is not recovered')
             check(recovery['setStep']=='function','setStep() is not recovered')
-            check(recovery['bridge']=='19.16','v19.16 bridge not loaded')
+            check(recovery['bridge']=='19.16','v19 bridge not loaded')
             check(recovery['legacy']=='ready','bridge did not see recovered legacy runtime')
 
             # Complete RAVAN gate -> workspace and open the teacher professional form.
@@ -145,12 +146,22 @@ jobs:
               check(js("return !!document.querySelector('[data-output-target=\"'+arguments[0]+'\"].active')",target),f'output target {target} did not activate')
             js("closeModal()")
 
-            # Quality check modal.
+            # Quality check modal: every missing required item becomes a direct field link.
             js("runQualityCheck()")
-            time.sleep(.05); check(modal_open('qualityModal'),'quality modal did not open')
+            time.sleep(.15); check(modal_open('qualityModal'),'quality modal did not open')
             score=js("return document.getElementById('qualityScore')?.textContent||''")
             check(bool(score.strip()),'quality score missing')
-            js("closeQualityModal()")
+            quality_links=js("return [...document.querySelectorAll('#qualityModal .r19-quality-field-link')].map(x=>x.textContent.trim())")
+            print('QUALITY_LINKS',json.dumps(quality_links,ensure_ascii=False))
+            check(len(quality_links)>0,'quality issues were not decorated as field links')
+            if quality_links:
+              js("document.querySelector('#qualityModal .r19-quality-field-link').click()")
+              time.sleep(.55)
+              check(not modal_open('qualityModal'),'quality field link did not close the quality modal')
+              focus=js("const e=document.activeElement;return {tag:e?.tagName||'',id:e?.id||'',name:e?.name||'',flash:!!document.querySelector('.r19-quality-target-flash')}")
+              print('QUALITY_JUMP',json.dumps(focus,ensure_ascii=False))
+              check(focus['tag'] in ('INPUT','TEXTAREA','SELECT'),'quality field link did not focus a form control')
+              check(focus['flash'],'quality field link did not highlight its target')
 
             # One-click AI preparation must open either quality gate or summary.
             js("prepareForAIV7()")
