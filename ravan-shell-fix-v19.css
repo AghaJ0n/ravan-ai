@@ -1,4 +1,22 @@
-/* RAVAN AI v19.21 — keep the legacy gate inside the SaaS shell instead of covering it */
+/* RAVAN AI v19.34 — bootstrap paint guard + legacy shell containment */
+
+/* Prevent the decompressed legacy interface from being painted while the
+   consolidated SaaS shell is still being built. This stylesheet is loaded in
+   <head>, so Chrome/Edge apply the guard before body paint. As soon as
+   ravan-ui-v19.js creates .r19-app the selector stops matching automatically. */
+body:not(:has(.r19-app)){
+  visibility:hidden!important;
+}
+
+/* Keep the page background stable while the body is intentionally hidden. */
+html{
+  background:#f5f7fb;
+}
+@media(prefers-color-scheme:dark){
+  html{background:#101526}
+}
+
+/* Keep the legacy gate inside the SaaS shell instead of covering it. */
 .r19-main > .r11-gate{
   position:static!important;
   inset:auto!important;
