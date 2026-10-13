@@ -1,0 +1,49 @@
+name: RAVAN role recents spacing regression
+on:
+  push:
+    paths:
+      - 'ravan-scroll-shell-v19.css'
+      - 'index.html'
+      - '.github/workflows/role-recents-spacing-regression.yml'
+permissions:
+  contents: read
+jobs:
+  chrome-spacing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Verify visual gap between next action and recent profiles
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-spacing-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          import json,sys
+
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          d=webdriver.Chrome(options=o)
+          try:
+            d.get('http://127.0.0.1:8765/?spacing=19.33')
+            WebDriverWait(d,25).until(lambda x:x.execute_script("return typeof r112PickRole==='function' && !!document.querySelector('.r19-nav')"))
+            d.execute_script("r112PickRole('teacher')")
+            WebDriverWait(d,10).until(lambda x:x.execute_script("return !!document.querySelector('.r112-role-next') && !!document.querySelector('.r11-saved')"))
+            metrics=d.execute_script("""
+              const btn=document.querySelector('.r112-role-next');
+              const saved=document.querySelector('.r11-saved');
+              const br=btn.getBoundingClientRect(), sr=saved.getBoundingClientRect();
+              const bs=getComputedStyle(btn), ss=getComputedStyle(saved);
+              return {gap:sr.top-br.bottom,button:br,saved:sr,buttonMarginBottom:bs.marginBottom,savedMarginTop:ss.marginTop,savedPaddingTop:ss.paddingTop,buttonDisplay:bs.display,savedDisplay:ss.display};
+            """)
+            print('ROLE_RECENTS_SPACING',json.dumps(metrics,ensure_ascii=False))
+            if metrics['gap'] < 22:
+              print('ASSERT_FAIL role action and recent profiles are still visually attached');sys.exit(1)
+            if metrics['savedPaddingTop'] not in ('18px','16px'):
+              print('ASSERT_FAIL recent profile padding override missing');sys.exit(1)
+            print('ASSERT_PASS role action and recent profiles have clear visual separation')
+          finally:
+            d.quit()
+          PY
