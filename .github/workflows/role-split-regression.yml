@@ -1,0 +1,67 @@
+name: RAVAN separated roles regression
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'ravan-dynamic-v13.js'
+      - 'ravan-ui-v19.js'
+      - '.github/workflows/role-split-regression.yml'
+permissions:
+  contents: read
+jobs:
+  roles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Test separated roles
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          import json,time,sys
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          o.set_capability('goog:loggingPrefs', {'browser':'ALL'})
+          d=webdriver.Chrome(options=o); failures=[]
+          def js(code,*args): return d.execute_script(code,*args)
+          def check(cond,msg):
+            if not cond: failures.append(msg)
+          def load():
+            d.get('http://127.0.0.1:8765/?role-split=19.29')
+            WebDriverWait(d,15).until(lambda x: len(x.find_elements('css selector','.r112-role-option'))>=14)
+          try:
+            load()
+            expected={'teacher':'معلم','designer':'طراح','graphic_designer':'گرافیست','researcher':'پژوهشگر','student':'دانشجو','school_student':'دانش‌آموز','manager':'مدیر','deputy':'معاون','executive':'مسئول اجرایی','creator':'تولیدکننده محتوا','programmer':'برنامه‌نویس','specialist':'کارشناس','admin':'کارمند اداری','other':'سایر'}
+            cards=js("return Object.fromEntries([...document.querySelectorAll('.r112-role-option')].map(x=>[x.dataset.role,x.querySelector('b')?.textContent.trim()]))")
+            print('CARDS',json.dumps(cards,ensure_ascii=False));check(len(cards)==14,'expected 14 role cards')
+            for k,v in expected.items():check(cards.get(k)==v,f'{k} title mismatch: {cards.get(k)}')
+            check(not any('/' in (v or '') for v in cards.values()),'combined role title still present')
+
+            for cat,need in [('آموزش',['معلم','دانش‌آموز','دانشجو','معاون']),('طراحی و خلاقیت',['طراح','گرافیست']),('کسب‌وکار',['مدیر','مسئول اجرایی','کارشناس','کارمند اداری'])]:
+              js("[...document.querySelectorAll('.r19-cat')].find(x=>x.textContent.trim()===arguments[0]).click()",cat);time.sleep(.15)
+              visible=js("return [...document.querySelectorAll('.r112-role-option')].filter(x=>!x.hidden).map(x=>x.querySelector('b').textContent.trim())")
+              print('CATEGORY',cat,json.dumps(visible,ensure_ascii=False))
+              for name in need:check(name in visible,f'{name} missing from {cat}')
+
+            cases=[('school_student','learn','level','دانش‌آموز'),('graphic_designer','brief','brand_context','گرافیست'),('executive','schedule','school_level','مسئول اجرایی'),('specialist','report','organization','کارشناس')]
+            for role,task,field,label in cases:
+              load()
+              js("r112PickRole(arguments[0]); r11Move(1); r115PickTask(arguments[1]); r11Move(1); selectAi('chatgpt'); r11Move(1)",role,task)
+              WebDriverWait(d,5).until(lambda x: x.execute_script("return document.documentElement.classList.contains('r19-workspace-active')"))
+              check(js("return document.querySelector('#r11RoleInput')?.value")==label,f'{role} label not preserved')
+              check(js("return !!document.querySelector('#r11DynamicFields [data-r13-field=\"'+arguments[0]+'\"]')",field),f'{role} missing inherited field {field}')
+
+            logs=d.get_log('browser');bad=[]
+            for row in logs:
+              msg=row.get('message','')
+              if row.get('level')=='SEVERE' and 'favicon.ico' not in msg: bad.append(msg)
+            check(not bad,'severe console errors: '+' | '.join(bad[:5]))
+            if failures:
+              print('ASSERT_FAIL',json.dumps(failures,ensure_ascii=False));sys.exit(1)
+            print('ASSERT_PASS separated roles')
+          finally:d.quit()
+          PY
