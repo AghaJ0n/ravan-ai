@@ -149,7 +149,7 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
     const remaining=Math.max(0,BOOT_MIN_MS-(performance.now()-bootStarted));
     if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
     setBootStage(3);
-    await new Promise(resolve=>setTimeout(resolve=>resolve(),180));
+    await new Promise(resolve=>setTimeout(resolve,180));
     if(boot)boot.classList.add('boot-ready');
     const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if(!reduced)await new Promise(resolve=>setTimeout(resolve,230));
