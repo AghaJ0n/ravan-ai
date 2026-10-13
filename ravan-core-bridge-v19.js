@@ -62,6 +62,22 @@ const legacyNodes=[];
 legacyNodes.forEach(el=>professionalBody.appendChild(el));
 document.documentElement.dataset.ravanProfessionalBridge=legacyNodes.length?'stashed':'missing';
 
+function closeLegacyOverlays(){
+  const welcome=professionalHost.querySelector('#welcomeOverlay');
+  const home=professionalHost.querySelector('#homeOverlayV7');
+  if(welcome){
+    welcome.classList.remove('open','show','active');
+    welcome.setAttribute('aria-hidden','true');
+    welcome.style.display='none';
+  }
+  if(home){
+    home.classList.remove('v7-home-open','open','show','active');
+    home.setAttribute('aria-hidden','true');
+    home.style.display='none';
+  }
+}
+closeLegacyOverlays();
+
 let attached=false;
 function attach(){
   const main=document.querySelector('.r19-main');
@@ -73,32 +89,19 @@ function attach(){
   }
   if(professionalHost.parentNode!==main)main.appendChild(professionalHost);
   closeLegacyOverlays();
+  /* The early CSS guard prevents even a single-frame flash while the legacy
+     document is being rebuilt. Once the bridge owns the overlays, inline state
+     is enough and the original legacy home can still be opened explicitly. */
+  document.getElementById('ravan-legacy-overlay-guard')?.remove();
   document.documentElement.dataset.ravanProfessionalBridge=legacyNodes.length?'ready':'missing';
   attached=true;
   return true;
 }
 function tryAttach(){if(!attached)attach()}
 
-/* The old TeacherAI welcome/home cards are no longer part of RAVAN's product
-   flow. Keep their DOM only because the recovered professional runtime still
-   references it, but never allow those legacy landing overlays to become
-   visible. The current RAVAN workspace and persistent navigation are the only
-   supported entry points. */
-function closeLegacyOverlays(){
-  const welcome=professionalHost.querySelector('#welcomeOverlay');
-  const home=professionalHost.querySelector('#homeOverlayV7');
-  for(const el of [welcome,home]){
-    if(!el)continue;
-    el.classList.remove('v7-home-open','open','show','active');
-    el.setAttribute('aria-hidden','true');
-    el.style.setProperty('display','none','important');
-    el.style.setProperty('visibility','hidden','important');
-    el.style.setProperty('pointer-events','none','important');
-  }
-}
-closeLegacyOverlays();
-
 const originalTeacherAdvanced=typeof window.r11OpenTeacherAdvanced==='function'?window.r11OpenTeacherAdvanced:null;
+const originalOpenHome=typeof window.openHomeV7==='function'?window.openHomeV7:null;
+
 function enterProfessional(){
   attach();
   if(!legacyNodes.length){
@@ -153,12 +156,16 @@ document.addEventListener('click',e=>{
 
 window.r11OpenTeacherAdvanced=enterProfessional;
 
-/* Any old control that still calls the legacy home function must not resurrect
-   the obsolete landing page. The persistent RAVAN navigation now owns those
-   destinations, so keep the call harmless and the overlay suppressed. */
+/* Preserve legacy Home for explicit legacy controls only. Before invoking it,
+   release the inline hiding applied during the RAVAN transition. This keeps
+   regression compatibility without letting the landing page appear by itself. */
 window.openHomeV7=function(){
-  closeLegacyOverlays();
-  return false;
+  const home=professionalHost.querySelector('#homeOverlayV7');
+  if(home){
+    home.style.removeProperty('display');
+    home.removeAttribute('aria-hidden');
+  }
+  return originalOpenHome?.call(window);
 };
 
 window.RAVAN_PROFESSIONAL={open:enterProfessional,close:exitProfessional,host:professionalHost};
@@ -171,10 +178,7 @@ requestAnimationFrame(()=>requestAnimationFrame(tryAttach));
 document.addEventListener('DOMContentLoaded',tryAttach,{once:true});
 window.addEventListener('load',tryAttach,{once:true});
 
-const observer=new MutationObserver(()=>{
-  closeLegacyOverlays();
-  if(attach())observer.disconnect();
-});
-observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-setTimeout(()=>{tryAttach();closeLegacyOverlays();observer.disconnect()},5000);
+const observer=new MutationObserver(()=>{if(attach())observer.disconnect()});
+observer.observe(document.documentElement,{childList:true,subtree:true});
+setTimeout(()=>{tryAttach();observer.disconnect()},5000);
 })();
