@@ -2,6 +2,7 @@ name: RAVAN bootstrap flash regression
 on:
   push:
     paths:
+      - 'index.html'
       - 'ravan-shell-fix-v19.css'
       - '.github/workflows/bootstrap-flash-regression.yml'
 permissions:
@@ -12,19 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python -m pip install -q selenium
-      - name: Verify legacy body is hidden until SaaS shell exists
+      - name: Verify no legacy frame is ever paintable during real bootstrap
         shell: bash
         run: |
-          cat > /tmp/ravan-bootstrap-guard.html <<'HTML'
-          <!doctype html>
-          <html lang="fa" dir="rtl">
-          <head>
-            <meta charset="utf-8">
-            <link rel="stylesheet" href="http://127.0.0.1:8765/ravan-shell-fix-v19.css">
-          </head>
-          <body><div id="legacy">legacy interface</div></body>
-          </html>
-          HTML
           python -m http.server 8765 >/tmp/ravan-bootstrap-http.log 2>&1 &
           sleep 2
           python - <<'PY'
@@ -32,25 +23,53 @@ jobs:
           from selenium.webdriver.chrome.options import Options
           import json,sys,time
 
-          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1440,900')
+          o=Options()
+          o.add_argument('--headless=new')
+          o.add_argument('--no-sandbox')
+          o.add_argument('--disable-dev-shm-usage')
+          o.add_argument('--window-size=1440,900')
+          o.set_capability('pageLoadStrategy','none')
+          o.set_capability('goog:loggingPrefs',{'browser':'ALL'})
           d=webdriver.Chrome(options=o)
+          states=[]; exposed=[]
           try:
-            d.get('file:///tmp/ravan-bootstrap-guard.html')
-            time.sleep(.25)
-            before=d.execute_script("return {supported:CSS.supports('selector(body:has(.r19-app))'),visibility:getComputedStyle(document.body).visibility,hasApp:!!document.querySelector('.r19-app')}")
-            print('BOOT_GUARD_BEFORE',json.dumps(before))
-            if not before['supported']:
-              print('ASSERT_FAIL :has() selector is not supported by test Chrome');sys.exit(1)
-            if before['visibility']!='hidden' or before['hasApp']:
-              print('ASSERT_FAIL legacy UI can paint before .r19-app exists');sys.exit(1)
+            started=time.time()
+            d.get('http://127.0.0.1:8765/?flash-regression=19.35')
+            deadline=started+8.0
+            while time.time()<deadline:
+              try:
+                s=d.execute_script("""
+                  const b=document.body, app=document.querySelector('.r19-app'), boot=document.getElementById('boot');
+                  const cs=b?getComputedStyle(b):null;
+                  const bootVisible=!!boot && getComputedStyle(boot).visibility!=='hidden' && getComputedStyle(boot).opacity!=='0';
+                  return {t:performance.now(), ready:document.readyState, hasBody:!!b, hasApp:!!app,
+                    nav:document.querySelectorAll('.r19-navitem').length,
+                    boot:bootVisible,
+                    visibility:cs?cs.visibility:'none', opacity:cs?cs.opacity:'none'};
+                """)
+                states.append(s)
+                # The only legal paint states are: the intentional logo splash,
+                # a hidden rewritten body, or the final consolidated app.
+                if s['hasBody'] and not s['boot'] and not s['hasApp'] and s['visibility']!='hidden' and s['opacity']!='0':
+                  exposed.append(s)
+                if s['hasApp'] and s['nav']>=6 and s['visibility']=='visible':
+                  break
+              except Exception:
+                pass
+              time.sleep(.02)
 
-            d.execute_script("const app=document.createElement('div');app.className='r19-app';document.body.appendChild(app)")
-            time.sleep(.05)
-            after=d.execute_script("return {visibility:getComputedStyle(document.body).visibility,hasApp:!!document.querySelector('.r19-app')}")
-            print('BOOT_GUARD_AFTER',json.dumps(after))
-            if after['visibility']!='visible' or not after['hasApp']:
-              print('ASSERT_FAIL final SaaS UI did not become visible');sys.exit(1)
-            print('ASSERT_PASS legacy bootstrap flash is guarded')
+            final=d.execute_script("return {hasApp:!!document.querySelector('.r19-app'),nav:document.querySelectorAll('.r19-navitem').length,visibility:getComputedStyle(document.body).visibility,opacity:getComputedStyle(document.body).opacity}")
+            print('SAMPLE_COUNT',len(states))
+            print('EXPOSED_STATES',json.dumps(exposed[:10]))
+            print('FINAL',json.dumps(final))
+            if exposed:
+              print('ASSERT_FAIL legacy body became paintable before .r19-app existed');sys.exit(1)
+            if not final['hasApp'] or final['nav']<6 or final['visibility']!='visible':
+              print('ASSERT_FAIL consolidated shell did not become visible');sys.exit(1)
+            bad=[x for x in d.get_log('browser') if x.get('level')=='SEVERE' and 'favicon.ico' not in x.get('message','')]
+            if bad:
+              print('ASSERT_FAIL severe browser errors',json.dumps(bad[:5]));sys.exit(1)
+            print('ASSERT_PASS zero legacy paint frames during real bootstrap')
           finally:
             d.quit()
           PY
