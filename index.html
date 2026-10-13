@@ -69,6 +69,11 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
     let html=await new Response(stream).text();
 
+    /* RAVAN_ROLE_SPLIT_19_29 — split formerly combined roles before Core scripts execute. */
+    const roleCatalogV1929="const r11Roles=[\n['teacher','📚','معلم','تدریس، طرح درس، آزمون و محتوای آموزشی'],['designer','🎨','طراح','Brief طراحی، رابط کاربری، ارائه و سیستم بصری'],['graphic_designer','🖌️','گرافیست','پوستر، بنر، هویت بصری و پرامپت تصویر'],['researcher','🔎','پژوهشگر','منابع، مرور ادبیات، تحلیل مقاله و گزارش پژوهشی'],['student','🎓','دانشجو','یادگیری دانشگاهی، پژوهش، خلاصه و ارائه'],['school_student','📘','دانش‌آموز','یادگیری درس، تمرین، آزمونک و برنامه مطالعه'],['manager','📊','مدیر','تصمیم‌گیری، گزارش، برنامه‌ریزی و جلسات'],['deputy','🏫','معاون','برنامه مدرسه، هماهنگی، گزارش و پیگیری'],['executive','📋','مسئول اجرایی','اجرای برنامه‌ها، پیگیری امور، گزارش و هماهنگی'],['creator','✍️','تولیدکننده محتوا','مقاله، شبکه اجتماعی، سناریو و تقویم محتوا'],['programmer','💻','برنامه‌نویس','کدنویسی، رفع خطا، مستندسازی و معماری'],['specialist','🧩','کارشناس','تحلیل، گزارش تخصصی، مستندسازی و پیگیری'],['admin','🗂️','کارمند اداری','نامه، صورت‌جلسه، فرم و گردش کار'],['other','＋','سایر','نقش دیگری دارم و خودم آن را مشخص می‌کنم']];";
+    html=html.replace(/const r11Roles=\[[\s\S]*?\];\s*const r11Tasks=/,roleCatalogV1929+'\nconst r11Tasks=');
+    html=html.replace("function r115TaskItems(){return (r11Tasks[r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}","function r115TaskItems(){const alias={school_student:'student',graphic_designer:'designer',executive:'deputy',specialist:'admin'};return (r11Tasks[alias[r11State.role]||r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}");
+
     /* Preserve the exact legacy workspace markup before the document is
        rewritten. The bridge can restore this original markup verbatim. */
     const wsId=html.indexOf('id="r11Workspace"');
