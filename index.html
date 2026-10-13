@@ -97,10 +97,14 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
       }
     }
     if(legacyMatch){
-      const runtimeUrl=URL.createObjectURL(new Blob([legacyMatch.code],{type:'text/javascript'}));
+      let legacyCode=legacyMatch.code;
+      const expandedRoles="const r11Roles=[\n['teacher','📚','معلم','تدریس، طرح درس، آزمون و محتوای آموزشی'],['designer','🎨','طراح','Brief طراحی، رابط کاربری، ارائه و سیستم بصری'],['graphic_designer','🖌️','گرافیست','پوستر، بنر، هویت بصری و پرامپت تصویر'],['researcher','🔎','پژوهشگر','منابع، مرور ادبیات، تحلیل مقاله و گزارش پژوهشی'],['student','🎓','دانشجو','یادگیری دانشگاهی، پژوهش، خلاصه و ارائه'],['school_student','📘','دانش‌آموز','یادگیری درس، تمرین، آزمونک و برنامه مطالعه'],['manager','📊','مدیر','تصمیم‌گیری، گزارش، برنامه‌ریزی و جلسات'],['deputy','🏫','معاون','برنامه مدرسه، هماهنگی، گزارش و پیگیری'],['executive','📋','مسئول اجرایی','اجرای برنامه‌ها، پیگیری امور، گزارش و هماهنگی'],['creator','✍️','تولیدکننده محتوا','مقاله، شبکه اجتماعی، سناریو و تقویم محتوا'],['programmer','💻','برنامه‌نویس','کدنویسی، رفع خطا، مستندسازی و معماری'],['specialist','🧩','کارشناس','تحلیل، گزارش تخصصی، مستندسازی و پیگیری'],['admin','🗂️','کارمند اداری','نامه، صورت‌جلسه، فرم و گردش کار'],['other','＋','سایر','نقش دیگری دارم و خودم آن را مشخص می‌کنم']];";
+      legacyCode=legacyCode.replace(/const r11Roles=\[[\s\S]*?\];\s*const r11Tasks=/,expandedRoles+'\nconst r11Tasks=');
+      legacyCode=legacyCode.replace("function r115TaskItems(){return (r11Tasks[r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}","function r115TaskItems(){const alias={school_student:'student',graphic_designer:'designer',executive:'deputy',specialist:'admin'};return (r11Tasks[alias[r11State.role]||r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}");
+      const runtimeUrl=URL.createObjectURL(new Blob([legacyCode],{type:'text/javascript'}));
       window.__RAVAN_LEGACY_RUNTIME_URL=runtimeUrl;
-      window.__RAVAN_LEGACY_RUNTIME_RECOVERY='19.16';
-      const recoveredTag='<script src="'+runtimeUrl+'" data-ravan-legacy-runtime="19.16"><\/script>';
+      window.__RAVAN_LEGACY_RUNTIME_RECOVERY='19.29';
+      const recoveredTag='<script src="'+runtimeUrl+'" data-ravan-legacy-runtime="19.29"><\/script>';
       html=html.slice(0,legacyMatch.index)+recoveredTag+html.slice(legacyMatch.index+legacyMatch.full.length);
     }else{
       window.__RAVAN_LEGACY_RUNTIME_RECOVERY='missing';
@@ -110,7 +114,7 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
     /* Legacy welcome/home must never flash before the consolidated bridge runs. */
     const legacyOverlayGuard='<style id="ravan-legacy-overlay-guard">#welcomeOverlay,#homeOverlayV7{display:none!important;visibility:hidden!important;pointer-events:none!important}</style>';
     const styles=legacyOverlayGuard+'<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.17"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.17"><link rel="stylesheet" href="ravan-components-v19.css?v=19.17"><link rel="stylesheet" href="ravan-sections-v19.css?v=19.17"><link rel="stylesheet" href="ravan-navigation-v19.css?v=19.20"><link rel="stylesheet" href="ravan-shell-fix-v19.css?v=19.21"><link rel="stylesheet" href="ravan-scroll-shell-v19.css?v=19.24">';
-    const scripts='<script src="ravan-dynamic-v13.js?v=13.0"><\/script><script src="ravan-core-bridge-v19.js?v=19.26"><\/script><script src="ravan-ui-v19.js?v=19.17"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-profile-management-v19.js?v=19.22"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.20"><\/script>';
+    const scripts='<script src="ravan-dynamic-v13.js?v=13.1"><\/script><script src="ravan-core-bridge-v19.js?v=19.26"><\/script><script src="ravan-ui-v19.js?v=19.29"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-profile-management-v19.js?v=19.22"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.20"><\/script>';
     html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
 
     const remaining=Math.max(0,BOOT_MIN_MS-(performance.now()-bootStarted));

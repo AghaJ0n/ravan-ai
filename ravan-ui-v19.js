@@ -9,11 +9,11 @@ const subs=['شما چه کسی هستید؟','چه کاری می‌خواهید
 const cats=['همه','فناوری','کسب‌وکار','تولید محتوا','آموزش','تحقیق و تحلیل','طراحی و خلاقیت','سایر'];
 const catMap={
  'فناوری':['برنامه','فناوری','توسعه','نرم افزار','نرم‌افزار','داده','مهندس'],
- 'کسب‌وکار':['مدیر','کسب','بازاری','محصول','فروش','کارآفرین','مشاور'],
+ 'کسب‌وکار':['مدیر','کسب','بازاری','محصول','فروش','کارآفرین','مشاور','مسئول اجرایی','اجرایی','کارشناس','کارمند','اداری'],
  'تولید محتوا':['محتوا','نویس','رسانه','شبکه','کپی'],
- 'آموزش':['معلم','دانش','آموز','استاد','آموزش'],
+ 'آموزش':['معلم','دانش','آموز','استاد','آموزش','معاون','مدرسه'],
  'تحقیق و تحلیل':['پژوه','تحقیق','تحلیل','داده'],
- 'طراحی و خلاقیت':['طراح','گرافیک','هنر','خلاق'],
+ 'طراحی و خلاقیت':['طراح','گرافیک','گرافیست','بصری','هنر','خلاق'],
  'سایر':['سایر','دیگر']
 };
 const norm=s=>String(s||'').toLowerCase().trim().replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/‌/g,' ').replace(/\s+/g,' ');
@@ -153,7 +153,7 @@ function applyChoiceFilter(box,def){
  let empty=q('.r19-choice-empty',box);if(!empty){empty=document.createElement('div');empty.className='r19-choice-empty';empty.textContent='مورد مشابهی پیدا نشد؛ می‌توانید متن دلخواه خودتان را وارد کنید.';q(def.menu,box)?.append(empty)}empty.hidden=!!count;
 }
 function decorateOptionIcons(){
- roleTaskDef().forEach(def=>{qa(`${def.box} ${def.opt}`).forEach(o=>{const ico=q('.ico',o);if(!ico||ico.dataset.svg)return;const t=norm(o.textContent);let id='briefcase';if(/برنامه|توسعه|نرم افزار|نرم‌افزار|مهندس/.test(t))id='code';else if(/معلم|دانش|آموز|استاد|آموزش/.test(t))id='graduation';else if(/طراح|گرافیک|هنر|خلاق/.test(t))id='palette';else if(/پژوه|تحقیق|آزمایش/.test(t))id='flask';else if(/محتوا|نویس|رسانه/.test(t))id='content';else if(/مشاور|کاربر|منابع انسانی|تیم/.test(t))id='users';ico.innerHTML=icon(id);ico.dataset.svg='1'})})
+ roleTaskDef().forEach(def=>{qa(`${def.box} ${def.opt}`).forEach(o=>{const ico=q('.ico',o);if(!ico||ico.dataset.svg)return;const t=norm(o.textContent);let id='briefcase';if(/برنامه|توسعه|نرم افزار|نرم‌افزار|مهندس/.test(t))id='code';else if(/معلم|دانش|آموز|استاد|آموزش/.test(t))id='graduation';else if(/طراح|گرافیک|گرافیست|هنر|خلاق/.test(t))id='palette';else if(/پژوه|تحقیق|آزمایش/.test(t))id='flask';else if(/محتوا|نویس|رسانه/.test(t))id='content';else if(/مشاور|کاربر|منابع انسانی|تیم/.test(t))id='users';ico.innerHTML=icon(id);ico.dataset.svg='1'})})
 }
 function syncWorkspaceState(){
  const main=q('.r19-main'),ws=q('#r11Workspace,.r11-workspace'),gate=q('.r11-gate');
