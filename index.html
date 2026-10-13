@@ -8,44 +8,30 @@
 <script>window.__RAVAN_BOOT_STARTED_AT=performance.now();</script>
 <style>
 html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;background:#f5f7fb;color:#172033}
-#boot{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;box-sizing:border-box;background:radial-gradient(circle at 50% 47%,rgba(98,70,234,.12),transparent 24%),linear-gradient(180deg,#fbfcff 0%,#f4f6fb 100%);opacity:1;visibility:visible;transition:opacity 360ms ease,visibility 360ms ease}
-#boot.boot-ready{opacity:0;visibility:hidden;pointer-events:none}
-.boot-logo{display:grid;justify-items:center;gap:18px;text-align:center;animation:ravanLogoEnter .75s cubic-bezier(.2,.8,.2,1) both}
-.boot-mark-wrap{position:relative;width:94px;height:94px;display:grid;place-items:center}
-.boot-glow{position:absolute;inset:-28px;border-radius:999px;background:radial-gradient(circle,rgba(98,70,234,.18) 0%,rgba(98,70,234,.08) 42%,transparent 72%);animation:ravanGlow 2s ease-in-out infinite}
-.boot-mark{position:relative;width:72px;height:72px;border-radius:23px;display:grid;place-items:center;background:linear-gradient(145deg,#765bf5,#5939df);box-shadow:0 18px 42px rgba(98,70,234,.28);animation:ravanPulse 2s ease-in-out infinite}
+#boot{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;box-sizing:border-box;background:radial-gradient(circle at 50% 47%,rgba(98,70,234,.12),transparent 24%),linear-gradient(180deg,#fbfcff 0%,#f4f6fb 100%)}
+.boot-logo{display:grid;justify-items:center;gap:16px;text-align:center}
+.boot-mark{width:72px;height:72px;border-radius:23px;display:grid;place-items:center;background:linear-gradient(145deg,#765bf5,#5939df);box-shadow:0 18px 42px rgba(98,70,234,.28)}
 .boot-mark svg{width:39px;height:39px;display:block}
 .boot-brand{font-size:29px;line-height:1;font-weight:900;letter-spacing:.8px;color:#172033}
-.boot-tagline{margin-top:-5px;font-size:11px;color:#8b94a7;letter-spacing:.1px}
-.boot-line{width:46px;height:3px;border-radius:999px;background:#e1dcff;overflow:hidden;margin-top:2px;direction:ltr}
-.boot-line:after{content:"";display:block;width:40%;height:100%;border-radius:inherit;background:#6246ea;animation:ravanLine 1.15s ease-in-out infinite}
-@keyframes ravanLogoEnter{0%{opacity:0;transform:translateY(10px) scale(.94)}100%{opacity:1;transform:none}}
-@keyframes ravanPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
-@keyframes ravanGlow{0%,100%{transform:scale(.92);opacity:.62}50%{transform:scale(1.08);opacity:1}}
-@keyframes ravanLine{0%{transform:translateX(-135%)}55%{transform:translateX(75%)}100%{transform:translateX(250%)}}
-@media(max-width:560px){.boot-mark-wrap{width:84px;height:84px}.boot-mark{width:66px;height:66px;border-radius:21px}.boot-mark svg{width:36px;height:36px}.boot-brand{font-size:26px}}
-@media(prefers-color-scheme:dark){html,body{background:#101526;color:#eef1ff}#boot{background:radial-gradient(circle at 50% 47%,rgba(139,112,255,.18),transparent 27%),linear-gradient(180deg,#12182a 0%,#0f1423 100%)}.boot-brand{color:#f3f5ff}.boot-tagline{color:#929db5}.boot-line{background:#2a3150}.boot-glow{background:radial-gradient(circle,rgba(139,112,255,.22) 0%,rgba(139,112,255,.08) 43%,transparent 72%)}}
-@media(prefers-reduced-motion:reduce){#boot{transition:none}.boot-logo,.boot-glow,.boot-mark,.boot-line:after{animation:none}}
+.boot-tagline{margin-top:-4px;font-size:11px;color:#8b94a7;letter-spacing:.1px}
+@media(max-width:560px){.boot-mark{width:66px;height:66px;border-radius:21px}.boot-mark svg{width:36px;height:36px}.boot-brand{font-size:26px}}
+@media(prefers-color-scheme:dark){html,body{background:#101526;color:#eef1ff}#boot{background:radial-gradient(circle at 50% 47%,rgba(139,112,255,.18),transparent 27%),linear-gradient(180deg,#12182a 0%,#0f1423 100%)}.boot-brand{color:#f3f5ff}.boot-tagline{color:#929db5}}
 </style>
 </head>
 <body>
 <div id="boot" role="status" aria-live="polite" aria-label="در حال ورود به RAVAN AI">
   <div class="boot-logo">
-    <div class="boot-mark-wrap" aria-hidden="true">
-      <div class="boot-glow"></div>
-      <div class="boot-mark">
-        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="5" y="5" width="8" height="8" rx="2.4" fill="white"/>
-          <rect x="19" y="5" width="8" height="8" rx="2.4" fill="white" fill-opacity=".72"/>
-          <rect x="5" y="19" width="8" height="8" rx="2.4" fill="white" fill-opacity=".72"/>
-          <path d="M20 18.5h6.5v6.5H20z" fill="white"/>
-          <path d="M23.25 15v13M16.75 21.5h13" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".72"/>
-        </svg>
-      </div>
+    <div class="boot-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="5" width="8" height="8" rx="2.4" fill="white"/>
+        <rect x="19" y="5" width="8" height="8" rx="2.4" fill="white" fill-opacity=".72"/>
+        <rect x="5" y="19" width="8" height="8" rx="2.4" fill="white" fill-opacity=".72"/>
+        <path d="M20 18.5h6.5v6.5H20z" fill="white"/>
+        <path d="M23.25 15v13M16.75 21.5h13" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".72"/>
+      </svg>
     </div>
     <div class="boot-brand">RAVAN AI</div>
     <div class="boot-tagline">میزکار هوشمند ساخت پرامپت</div>
-    <div class="boot-line" aria-hidden="true"></div>
   </div>
 </div>
 <script src="payload-1.js"></script>
@@ -60,7 +46,7 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
 <script src="payload-7.js"></script>
 <script>
 (async()=>{
-  const BOOT_MIN_MS=3000;
+  const BOOT_MIN_MS=650;
   const bootStarted=window.__RAVAN_BOOT_STARTED_AT||performance.now();
   const boot=document.getElementById('boot');
   try {
@@ -74,8 +60,7 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
     html=html.replace(/const r11Roles=\[[\s\S]*?\];\s*const r11Tasks=/,roleCatalogV1929+'\nconst r11Tasks=');
     html=html.replace("function r115TaskItems(){return (r11Tasks[r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}","function r115TaskItems(){const alias={school_student:'student',graphic_designer:'designer',executive:'deputy',specialist:'admin'};return (r11Tasks[alias[r11State.role]||r11State.role]||r11Tasks.other||[]).filter(x=>x[0]!=='other')}");
 
-    /* Preserve the exact legacy workspace markup before the document is
-       rewritten. The bridge can restore this original markup verbatim. */
+    /* Preserve the exact legacy workspace markup before the document is rewritten. */
     const wsId=html.indexOf('id="r11Workspace"');
     if(wsId>=0){
       const wsStart=html.lastIndexOf('<div',wsId);
@@ -85,13 +70,7 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
       window.__RAVAN_WORKSPACE_HTML='';
     }
 
-    /* Chrome was parsing the large first legacy inline runtime incorrectly
-       after document.write(), which left all professional-form globals such as
-       move(), openHomeV7(), previewMD(), settings/profile handlers, etc. absent.
-       The source itself is valid. Externalize that exact runtime to a Blob URL
-       and keep it in the same position so it executes as a classic blocking
-       script with the original ordering, without passing its source through the
-       HTML parser a second time. */
+    /* Recover the large legacy runtime as a classic external Blob script. */
     const legacyRe=/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi;
     let legacyMatch=null,m;
     while((m=legacyRe.exec(html))){
@@ -116,25 +95,20 @@ html,body{height:100%;margin:0;font-family:Tahoma,"Segoe UI",sans-serif;backgrou
       console.error('[RAVAN] legacy runtime block was not found');
     }
 
-    /* Block every legacy paint inside the rewritten document. This guard is
-       inline in <head>, so it applies before external CSS or legacy markup can
-       render. CSS :has() reveals the body the instant the consolidated shell
-       exists, without injecting another runtime script into the legacy HTML. */
-    const preShellGuard='<style id="ravan-pre-shell-guard">html,body{background:#f5f7fb}body:not(:has(.r19-app))>*:not(#ravanBootHandoff){visibility:hidden!important}#ravanBootHandoff{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:radial-gradient(circle at 50% 47%,rgba(98,70,234,.12),transparent 24%),linear-gradient(180deg,#fbfcff 0%,#f4f6fb 100%);visibility:visible!important;opacity:1!important;pointer-events:auto}#ravanBootHandoff .rh-wrap{display:grid;justify-items:center;gap:16px;text-align:center}#ravanBootHandoff .rh-mark{width:72px;height:72px;border-radius:23px;display:grid;place-items:center;background:linear-gradient(145deg,#765bf5,#5939df);box-shadow:0 18px 42px rgba(98,70,234,.28);animation:ravanHandoffPulse 2s ease-in-out infinite}#ravanBootHandoff .rh-mark svg{width:39px;height:39px;display:block}#ravanBootHandoff .rh-brand{font:900 29px/1 Tahoma,"Segoe UI",sans-serif;letter-spacing:.8px;color:#172033}#ravanBootHandoff .rh-line{width:46px;height:3px;border-radius:999px;background:#e1dcff;overflow:hidden;direction:ltr}#ravanBootHandoff .rh-line:after{content:"";display:block;width:40%;height:100%;border-radius:inherit;background:#6246ea;animation:ravanHandoffLine 1.15s ease-in-out infinite}body:has(.r19-app)>#ravanBootHandoff{display:none!important}@keyframes ravanHandoffPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}@keyframes ravanHandoffLine{0%{transform:translateX(-135%)}55%{transform:translateX(75%)}100%{transform:translateX(250%)}}@media(prefers-color-scheme:dark){html,body{background:#101526}#ravanBootHandoff{background:radial-gradient(circle at 50% 47%,rgba(139,112,255,.18),transparent 27%),linear-gradient(180deg,#12182a 0%,#0f1423 100%)}#ravanBootHandoff .rh-brand{color:#f3f5ff}#ravanBootHandoff .rh-line{background:#2a3150}}@media(prefers-reduced-motion:reduce){#ravanBootHandoff .rh-mark,#ravanBootHandoff .rh-line:after{animation:none}}@supports not selector(body:has(.r19-app)){body>*:not(#ravanBootHandoff){visibility:hidden!important}}</style>';
-    const handoffCover='<div id="ravanBootHandoff" role="status" aria-label="در حال ورود به RAVAN AI"><div class="rh-wrap"><div class="rh-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="8" height="8" rx="2.4" fill="white"/><rect x="19" y="5" width="8" height="8" rx="2.4" fill="white" fill-opacity=".72"/><rect x="5" y="19" width="8" height="8" rx="2.4" fill="white" fill-opacity=".72"/><path d="M20 18.5h6.5v6.5H20z" fill="white"/><path d="M23.25 15v13M16.75 21.5h13" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".72"/></svg></div><div class="rh-brand">RAVAN AI</div><div class="rh-line" aria-hidden="true"></div></div></div>';
+    /* One continuous visual loader: the initial #boot is replaced by matching
+       html pseudo-elements in the rewritten document. They stay until the
+       active RAVAN view is genuinely painted and r19-first-ready is set. */
+    const preShellGuard='<style id="ravan-pre-shell-guard">html,body{background:#f5f7fb}html::before{content:"";position:fixed;inset:0;z-index:2147483645;display:block;background:radial-gradient(circle at 50% 47%,rgba(98,70,234,.12),transparent 24%),linear-gradient(180deg,#fbfcff 0%,#f4f6fb 100%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility .22s ease}html::after{content:"RAVAN AI\\A میزکار هوشمند ساخت پرامپت";white-space:pre;position:fixed;z-index:2147483646;top:50%;left:50%;transform:translate(-50%,-50%);min-width:190px;min-height:124px;padding-top:88px;box-sizing:border-box;text-align:center;direction:ltr;font:900 29px/1.35 Tahoma,\"Segoe UI\",sans-serif;letter-spacing:.8px;color:#172033;background:linear-gradient(#fff 0 0) calc(50% - 12px) 17px/8px 8px no-repeat,linear-gradient(rgba(255,255,255,.72) 0 0) calc(50% + 12px) 17px/8px 8px no-repeat,linear-gradient(rgba(255,255,255,.72) 0 0) calc(50% - 12px) 41px/8px 8px no-repeat,linear-gradient(#fff 0 0) calc(50% + 12px) 41px/8px 8px no-repeat,linear-gradient(145deg,#765bf5,#5939df) 50% 0/72px 72px no-repeat;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility .22s ease}html:not(.r19-first-ready)::before,html:not(.r19-first-ready)::after{opacity:1;visibility:visible;pointer-events:auto}html:not(.r19-first-ready) body>*{visibility:hidden!important}html:not(.r19-first-ready)::after{font-size:29px}html:not(.r19-first-ready)::after{line-height:1.35}html:not(.r19-first-ready)::after{color:#172033}html:not(.r19-first-ready)::after{filter:drop-shadow(0 14px 28px rgba(98,70,234,.14))}html:not(.r19-first-ready)::after{animation:ravanSingleLoader 1.8s ease-in-out infinite}@keyframes ravanSingleLoader{0%,100%{filter:drop-shadow(0 14px 28px rgba(98,70,234,.12))}50%{filter:drop-shadow(0 18px 34px rgba(98,70,234,.25))}}@media(prefers-color-scheme:dark){html,body{background:#101526}html::before{background:radial-gradient(circle at 50% 47%,rgba(139,112,255,.18),transparent 27%),linear-gradient(180deg,#12182a 0%,#0f1423 100%)}html::after{color:#f3f5ff}}@media(max-width:560px){html::after{font-size:26px;min-width:175px}}@media(prefers-reduced-motion:reduce){html::after{animation:none}}</style>';
     const legacyOverlayGuard='<style id="ravan-legacy-overlay-guard">#welcomeOverlay,#homeOverlayV7{display:none!important;visibility:hidden!important;pointer-events:none!important}</style>';
-    const styles=preShellGuard+legacyOverlayGuard+'<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.17"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.17"><link rel="stylesheet" href="ravan-components-v19.css?v=19.17"><link rel="stylesheet" href="ravan-sections-v19.css?v=19.17"><link rel="stylesheet" href="ravan-navigation-v19.css?v=19.20"><link rel="stylesheet" href="ravan-shell-fix-v19.css?v=19.21"><link rel="stylesheet" href="ravan-scroll-shell-v19.css?v=19.32">';
-    const scripts='<script src="ravan-dynamic-v13.js?v=13.1"><\/script><script src="ravan-core-bridge-v19.js?v=19.32"><\/script><script src="ravan-ui-v19.js?v=19.29"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-profile-management-v19.js?v=19.22"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.20"><\/script>';
-    html=html.replace('</head>',styles+'</head>').replace(/<body([^>]*)>/i,'<body$1>'+handoffCover).replace('</body>',scripts+'</body>');
+    const styles=preShellGuard+legacyOverlayGuard+'<link rel="stylesheet" href="ravan-tokens-v19.css?v=19.17"><link rel="stylesheet" href="ravan-layout-v19.css?v=19.17"><link rel="stylesheet" href="ravan-components-v19.css?v=19.17"><link rel="stylesheet" href="ravan-sections-v19.css?v=19.17"><link rel="stylesheet" href="ravan-navigation-v19.css?v=19.20"><link rel="stylesheet" href="ravan-shell-fix-v19.css?v=19.39"><link rel="stylesheet" href="ravan-scroll-shell-v19.css?v=19.32">';
+    const scripts='<script src="ravan-dynamic-v13.js?v=13.1"><\/script><script src="ravan-core-bridge-v19.js?v=19.32"><\/script><script src="ravan-ui-v19.js?v=19.29"><\/script><script src="ravan-a11y-v19.js?v=19.17"><\/script><script src="ravan-sections-v19.js?v=19.17"><\/script><script src="ravan-profile-management-v19.js?v=19.22"><\/script><script src="ravan-section-guides-v19.js?v=19.18"><\/script><script src="ravan-navigation-v19.js?v=19.39"><\/script>';
+    html=html.replace('</head>',styles+'</head>').replace('</body>',scripts+'</body>');
 
     const remaining=Math.max(0,BOOT_MIN_MS-(performance.now()-bootStarted));
     if(remaining)await new Promise(resolve=>setTimeout(resolve,remaining));
-    /* Keep the logo fully covering the old document until the rewrite starts.
-       The inline preShellGuard then owns the transition and keeps a continuous branded cover over every legacy paint until the final shell replaces the body. */
     document.open(); document.write(html); document.close();
   } catch(e) {
     if(boot){
-      boot.classList.remove('boot-ready');
       boot.innerHTML='<div class="boot-logo"><div class="boot-brand">RAVAN AI</div><div class="boot-tagline">مرورگر نتوانست برنامه را بارگذاری کند. لطفاً از Chrome یا Edge جدید استفاده کنید.</div></div>';
     }
     console.error(e);
