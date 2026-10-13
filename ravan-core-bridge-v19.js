@@ -1,4 +1,4 @@
-/* RAVAN AI v19.26 — restore Core workspace, recovered legacy globals and professional teacher form */
+/* RAVAN AI v19.32 — restore Core workspace, recovered legacy globals and professional teacher form */
 (()=>{
 'use strict';
 
@@ -78,6 +78,197 @@ function closeLegacyOverlays(){
 }
 closeLegacyOverlays();
 
+let qualityObserver=null;
+let qualityLinksInstalled=false;
+
+function normalizeQualityText(value){
+  return String(value||'')
+    .replace(/[يى]/g,'ی').replace(/ك/g,'ک')
+    .replace(/[\u064B-\u065F\u0670]/g,'')
+    .replace(/[‌‍]/g,' ')
+    .replace(/[«»"'`()[\]{}:؛،,.!?؟]/g,' ')
+    .replace(/\s+/g,' ').trim().toLowerCase();
+}
+
+function qualityFieldName(issueText){
+  let text=String(issueText||'').replace(/فیلد الزامی تکمیل نشده/g,' ').trim();
+  const dashParts=text.split(/[—–-]/).map(x=>x.trim()).filter(Boolean);
+  if(dashParts.length>1)text=dashParts[dashParts.length-1];
+  text=text.replace(/^[\s۰-۹٠-٩0-9.]+/,'').trim();
+  return text;
+}
+
+function controlForLabel(el){
+  if(!el)return null;
+  if(el.matches?.('input:not([type="hidden"]),textarea,select,[contenteditable="true"]'))return el;
+  if(el.tagName==='LABEL'){
+    const id=el.getAttribute('for');
+    if(id){
+      const byId=professionalHost.querySelector('#'+CSS.escape(id));
+      if(byId)return byId;
+    }
+    const inside=el.querySelector('input:not([type="hidden"]),textarea,select,[contenteditable="true"]');
+    if(inside)return inside;
+  }
+  const container=el.closest?.('.field,.form-group,.question,.input-group,.control,.card,fieldset,[class*="field"],[class*="question"]')||el.parentElement;
+  return container?.querySelector?.('input:not([type="hidden"]),textarea,select,[contenteditable="true"]')||null;
+}
+
+function scoreFieldCandidate(text,target){
+  if(!text||!target)return -1;
+  if(text===target)return 1000;
+  if(text.includes(target))return 850-Math.min(250,text.length-target.length);
+  if(target.includes(text)&&text.length>=5)return 650-Math.min(200,target.length-text.length);
+  const words=target.split(' ').filter(x=>x.length>1);
+  if(!words.length)return -1;
+  const hits=words.filter(w=>text.includes(w)).length;
+  return hits>=Math.max(1,Math.ceil(words.length*.6)) ? hits*80-Math.abs(text.length-target.length) : -1;
+}
+
+function resolveQualityTarget(issueText){
+  const modal=professionalHost.querySelector('#qualityModal');
+  const targetName=normalizeQualityText(qualityFieldName(issueText));
+  if(!targetName)return null;
+  const semantic=[...professionalHost.querySelectorAll('label,legend,h1,h2,h3,h4,h5,h6,b,strong,.label,.field-label,.field-title,.control-label,[data-label]')]
+    .filter(el=>!modal?.contains(el));
+  let best=null,bestScore=-1;
+  for(const el of semantic){
+    const score=scoreFieldCandidate(normalizeQualityText(el.textContent),targetName);
+    if(score<=bestScore)continue;
+    const control=controlForLabel(el);
+    if(control){best={control,anchor:el};bestScore=score}
+  }
+  if(best)return best;
+
+  for(const control of professionalHost.querySelectorAll('input:not([type="hidden"]),textarea,select,[contenteditable="true"]')){
+    if(modal?.contains(control))continue;
+    const container=control.closest('.field,.form-group,.question,.input-group,.control,.card,fieldset,[class*="field"],[class*="question"]')||control.parentElement;
+    const probe=[control.getAttribute('aria-label'),control.getAttribute('placeholder'),control.name,control.id,container?.textContent].filter(Boolean).join(' ');
+    const score=scoreFieldCandidate(normalizeQualityText(probe),targetName);
+    if(score>bestScore){best={control,anchor:container||control};bestScore=score}
+  }
+  return bestScore>=0?best:null;
+}
+
+function flashQualityTarget(control,anchor){
+  const target=control.closest('.field,.form-group,.question,.input-group,.control,.card,fieldset,[class*="field"],[class*="question"]')||anchor||control;
+  target.classList.remove('r19-quality-target-flash');
+  void target.offsetWidth;
+  target.classList.add('r19-quality-target-flash');
+  setTimeout(()=>target.classList.remove('r19-quality-target-flash'),2400);
+}
+
+function navigateToQualityIssue(issueText){
+  const found=resolveQualityTarget(issueText);
+  if(!found){
+    window.toast('فیلد مربوط به این مورد پیدا نشد','error');
+    return;
+  }
+  const {control,anchor}=found;
+  const steps=[...professionalHost.querySelectorAll('section.step')];
+  const section=control.closest('section.step')||anchor?.closest?.('section.step');
+  const stepIndex=section?steps.indexOf(section):-1;
+  try{window.closeQualityModal?.()}catch(e){}
+  if(stepIndex>=0){
+    try{window.setStep?.(stepIndex)}catch(e){console.warn('[RAVAN] quality jump step',e)}
+  }
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    (anchor||control).scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
+    flashQualityTarget(control,anchor);
+    setTimeout(()=>{
+      try{control.focus({preventScroll:true})}catch(e){try{control.focus()}catch(_) {}}
+    },260);
+  }));
+}
+
+function issueRowFor(node,modal){
+  let row=node.closest?.('[class*="issue"],[class*="problem"],[class*="warning"],[class*="error"],li');
+  if(row&&row!==modal)return row;
+  row=node.parentElement;
+  while(row&&row.parentElement&&row.parentElement!==modal){
+    const text=normalizeQualityText(row.textContent);
+    if(text.includes('فیلد الزامی تکمیل نشده')&&row.children.length<=6)break;
+    row=row.parentElement;
+  }
+  return row&&row!==modal?row:null;
+}
+
+function decorateQualityIssues(){
+  const modal=professionalHost.querySelector('#qualityModal');
+  if(!modal)return;
+  const marker=normalizeQualityText('فیلد الزامی تکمیل نشده');
+  const seen=new Set();
+  const nodes=[...modal.querySelectorAll('div,li,p,span,b,strong')].filter(el=>{
+    const own=normalizeQualityText(el.textContent);
+    if(!own.includes(marker))return false;
+    return ![...el.children].some(ch=>normalizeQualityText(ch.textContent).includes(marker));
+  });
+  nodes.forEach(node=>{
+    const row=issueRowFor(node,modal);
+    if(!row||seen.has(row))return;
+    seen.add(row);
+    const issueText=row.textContent||node.textContent||'';
+    row.classList.add('r19-quality-field-link');
+    row.setAttribute('role','button');
+    row.setAttribute('tabindex','0');
+    row.setAttribute('title','رفتن به این فیلد');
+    row.dataset.r19QualityIssue=issueText.trim();
+  });
+}
+
+function installQualityLinks(){
+  if(!document.getElementById('r19-quality-link-style')){
+    const style=document.createElement('style');
+    style.id='r19-quality-link-style';
+    style.textContent=`
+      #qualityModal .r19-quality-field-link{cursor:pointer!important;position:relative;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease!important}
+      #qualityModal .r19-quality-field-link:hover,#qualityModal .r19-quality-field-link:focus-visible{transform:translateY(-1px);border-color:#8b5cf6!important;box-shadow:0 7px 20px rgba(98,70,234,.13)!important;outline:none!important}
+      #qualityModal .r19-quality-field-link:focus-visible{box-shadow:0 0 0 3px rgba(98,70,234,.18),0 7px 20px rgba(98,70,234,.13)!important}
+      .r19-quality-target-flash{animation:r19QualityTarget 1.15s ease 2!important;outline:3px solid rgba(98,70,234,.34)!important;outline-offset:4px!important;border-radius:12px!important}
+      @keyframes r19QualityTarget{0%,100%{box-shadow:0 0 0 0 rgba(98,70,234,0)}45%{box-shadow:0 0 0 7px rgba(98,70,234,.16)}}
+      @media(prefers-reduced-motion:reduce){#qualityModal .r19-quality-field-link,.r19-quality-target-flash{transition:none!important;animation:none!important}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  const modal=professionalHost.querySelector('#qualityModal');
+  if(modal&&!qualityObserver){
+    qualityObserver=new MutationObserver(()=>decorateQualityIssues());
+    qualityObserver.observe(modal,{childList:true,subtree:true,characterData:true});
+  }
+
+  if(typeof window.runQualityCheck==='function'&&!window.runQualityCheck.__r19Linked){
+    const original=window.runQualityCheck;
+    const wrapped=function(...args){
+      const result=original.apply(this,args);
+      setTimeout(decorateQualityIssues,0);
+      setTimeout(decorateQualityIssues,80);
+      return result;
+    };
+    wrapped.__r19Linked=true;
+    window.runQualityCheck=wrapped;
+  }
+
+  if(!qualityLinksInstalled){
+    professionalHost.addEventListener('click',e=>{
+      const row=e.target?.closest?.('.r19-quality-field-link');
+      if(!row||!professionalHost.querySelector('#qualityModal')?.contains(row))return;
+      e.preventDefault();
+      e.stopPropagation();
+      navigateToQualityIssue(row.dataset.r19QualityIssue||row.textContent||'');
+    });
+    professionalHost.addEventListener('keydown',e=>{
+      if(e.key!=='Enter'&&e.key!==' ')return;
+      const row=e.target?.closest?.('.r19-quality-field-link');
+      if(!row)return;
+      e.preventDefault();
+      navigateToQualityIssue(row.dataset.r19QualityIssue||row.textContent||'');
+    });
+    qualityLinksInstalled=true;
+  }
+  decorateQualityIssues();
+}
+
 let attached=false;
 function attach(){
   const main=document.querySelector('.r19-main');
@@ -89,10 +280,8 @@ function attach(){
   }
   if(professionalHost.parentNode!==main)main.appendChild(professionalHost);
   closeLegacyOverlays();
-  /* The early CSS guard prevents even a single-frame flash while the legacy
-     document is being rebuilt. Once the bridge owns the overlays, inline state
-     is enough and the original legacy home can still be opened explicitly. */
   document.getElementById('ravan-legacy-overlay-guard')?.remove();
+  installQualityLinks();
   document.documentElement.dataset.ravanProfessionalBridge=legacyNodes.length?'ready':'missing';
   attached=true;
   return true;
@@ -113,16 +302,13 @@ function enterProfessional(){
   workspace?.classList.remove('open');
   if(gate)gate.style.display='none';
   closeLegacyOverlays();
-
-  /* Let the original Core perform its own transition, then enforce the two
-     required calls separately so one missing legacy overlay cannot abort the
-     rest of the transition. */
   try{originalTeacherAdvanced?.call(window)}catch(e){console.warn('[RAVAN] legacy advanced transition',e)}
   try{window.closeHomeV7?.()}catch(e){}
   try{window.closeWelcome?.()}catch(e){}
   try{window.startProfessional?.()}catch(e){console.warn('[RAVAN] startProfessional',e)}
   try{window.setStep?.(0)}catch(e){console.warn('[RAVAN] setStep',e)}
   closeLegacyOverlays();
+  installQualityLinks();
   professionalHost.hidden=false;
   window.scrollTo({top:0,behavior:'auto'});
   document.documentElement.dataset.ravanProfessionalBridge='open';
@@ -143,9 +329,6 @@ function exitProfessional(){
   window.scrollTo({top:0,behavior:'auto'});
 }
 
-/* Inline legacy handlers can retain their original global binding in the
-   document-written payload. Capture the button click before target onclick so
-   the professional transition is guaranteed to use the consolidated bridge. */
 document.addEventListener('click',e=>{
   const btn=e.target?.closest?.('#r11TeacherAdvanced button');
   if(!btn)return;
@@ -156,9 +339,6 @@ document.addEventListener('click',e=>{
 
 window.r11OpenTeacherAdvanced=enterProfessional;
 
-/* Preserve legacy Home for explicit legacy controls only. Before invoking it,
-   release the inline hiding applied during the RAVAN transition. This keeps
-   regression compatibility without letting the landing page appear by itself. */
 window.openHomeV7=function(){
   const home=professionalHost.querySelector('#homeOverlayV7');
   if(home){
