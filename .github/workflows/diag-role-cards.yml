@@ -1,0 +1,36 @@
+name: RAVAN role card diagnostic
+on:
+  push:
+    paths:
+      - '.github/workflows/diag-role-cards.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -q selenium
+      - name: Inspect role cards
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import json,time
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          d=webdriver.Chrome(options=o)
+          try:
+            d.get('http://127.0.0.1:8765/?diag-role=1');time.sleep(4)
+            data=d.execute_script("""
+            return [...document.querySelectorAll('.r112-role-option')].map((o,i)=>({
+              i,text:o.innerText,html:o.outerHTML,
+              attrs:Object.fromEntries([...o.attributes].map(a=>[a.name,a.value]))
+            }));
+            """)
+            print('ROLE_CARDS',json.dumps(data,ensure_ascii=False))
+            print('INPUT',json.dumps(d.execute_script("return {input:document.querySelector('#r11RoleInput,.r112-role-input')?.outerHTML,state:window.r11State||null, pick:typeof window.r112PickRole, move:typeof window.r11Move}"),ensure_ascii=False))
+          finally:d.quit()
+          PY
