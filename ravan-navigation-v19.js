@@ -3,7 +3,7 @@
 'use strict';
 const root=document.documentElement;
 root.dataset.ravanPersistentNav='19.40';
-root.dataset.ravanAnswerProgress='19.42';
+root.dataset.ravanAnswerProgress='19.43';
 root.classList.remove('r19-first-ready');
 
 /* The loader must cover the app, not prevent layout. The inline bootstrap guard
@@ -221,8 +221,9 @@ function applyQuestionProgress(){
     root.dataset.ravanProgressMode=stats.requiredOnly?'required':'all';
 
     if(progress.dataset.r19AnswerSignature!==signature || !progress.querySelector('[data-r19-answer-progress]')){
-      progress.innerHTML=`<div class="r19-side-card" data-r19-answer-progress="19.42"><div class="r19-side-title">پیشرفت شما</div><div class="r19-ringrow"><div class="r19-stepnote"><b>گام ۴ از ۴</b>${escHtml(status)}</div><div class="r19-ring" style="--p:${pct}"><b>${pct}%</b></div></div><div class="r19-checks"><div class="r19-check done"><span class="dot"></span><span>${role}</span><span class="tick">✓</span></div><div class="r19-check done"><span class="dot"></span><span>${task}</span><span class="tick">✓</span></div><div class="r19-check done"><span class="dot"></span><span>${ai}</span><span class="tick">✓</span></div><div class="r19-check ${complete?'done':'active'}"><span class="dot"></span><span>${escHtml(lastLabel)}</span><span class="tick">${complete?'✓':'•'}</span></div></div></div>`;
+      progress.innerHTML=`<div class="r19-side-card" data-r19-answer-progress="19.43"><div class="r19-side-title">پیشرفت شما</div><div class="r19-ringrow"><div class="r19-stepnote"><b>گام ۴ از ۴</b>${escHtml(status)}</div><div class="r19-ring" style="--p:${pct}"><b>${pct}%</b></div></div><div class="r19-checks"><div class="r19-check done"><span class="dot"></span><span>${role}</span><span class="tick">✓</span></div><div class="r19-check done"><span class="dot"></span><span>${task}</span><span class="tick">✓</span></div><div class="r19-check done"><span class="dot"></span><span>${ai}</span><span class="tick">✓</span></div><div class="r19-check ${complete?'done':'active'}"><span class="dot"></span><span>${escHtml(lastLabel)}</span><span class="tick">${complete?'✓':'•'}</span></div></div></div>`;
       progress.dataset.r19AnswerSignature=signature;
+      progress.dataset.r19AnswerRendered='19.43';
     }
   }finally{
     progressWriting=false;
@@ -235,12 +236,17 @@ function scheduleQuestionProgress(){
   requestAnimationFrame(()=>requestAnimationFrame(applyQuestionProgress));
 }
 
-document.addEventListener('input',scheduleQuestionProgress,true);
-document.addEventListener('change',scheduleQuestionProgress,true);
-document.addEventListener('click',()=>{
+function stabilizeQuestionProgress(){
   scheduleQuestionProgress();
-  setTimeout(scheduleQuestionProgress,80);
-},true);
+  [24,80,160,320,640].forEach(ms=>setTimeout(()=>{
+    progressScheduled=false;
+    applyQuestionProgress();
+  },ms));
+}
+
+document.addEventListener('input',stabilizeQuestionProgress,true);
+document.addEventListener('change',stabilizeQuestionProgress,true);
+document.addEventListener('click',stabilizeQuestionProgress,true);
 
 const progressObserver=new MutationObserver((mutations)=>{
   if(progressWriting){
@@ -254,7 +260,7 @@ const progressObserver=new MutationObserver((mutations)=>{
 
 function startProgressObserver(){
   progressObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style']});
-  scheduleQuestionProgress();
+  stabilizeQuestionProgress();
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',startProgressObserver,{once:true});
 else startProgressObserver();
