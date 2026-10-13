@@ -10,23 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python -m pip install -q selenium
-      - name: Inspect role cards
+      - name: Inspect decompressed role source
         shell: bash
         run: |
-          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
-          sleep 2
-          python - <<'PY'
-          from selenium import webdriver
-          from selenium.webdriver.chrome.options import Options
-          import json,time
-          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
-          d=webdriver.Chrome(options=o)
-          try:
-            d.get('http://127.0.0.1:8765/?diag-role=2');time.sleep(4)
-            print('PICK_SOURCE',d.execute_script("return String(window.r112PickRole)"))
-            print('MOVE_SOURCE',d.execute_script("return String(window.r11Move)"))
-            print('ROLE_GLOBALS',json.dumps(d.execute_script("return Object.keys(window).filter(k=>/role/i.test(k)).sort()"),ensure_ascii=False))
-            print('SAMPLE_AFTER',json.dumps(d.execute_script("r112PickRole('student');return {value:document.querySelector('#r11RoleInput').value,step:document.querySelector('.r11-section.active')?.dataset.r11step||null,keys:Object.keys(window).filter(k=>/^r11/i.test(k)).slice(0,80)}"),ensure_ascii=False))
-          finally:d.quit()
-          PY
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm'),zlib=require('zlib');
+          global.window={};
+          for(const f of ['payload-1.js','payload-2a.js','payload-2b.js','payload-2c.js','payload-2d.js','payload-3.js','payload-4.js','payload-5.js','payload-6.js','payload-7.js']){
+            vm.runInThisContext(fs.readFileSync(f,'utf8'),{filename:f});
+          }
+          const html=zlib.gunzipSync(Buffer.from(window.__RAVAN_B64,'base64')).toString('utf8');
+          for(const needle of ['r11Roles','function renderRoles','function renderTasks']){
+            const i=html.indexOf(needle);console.log('\n===',needle,'@',i,'===\n',html.slice(Math.max(0,i-700),i+2600));
+          }
+          NODE
