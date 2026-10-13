@@ -1,0 +1,82 @@
+name: RAVAN dark theme apply
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-dark-theme-v19.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wire full-shell dark theme
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          let css=fs.readFileSync('ravan-scroll-shell-v19.css','utf8');
+          const imp="@import url('ravan-dark-v19.css?v=19.30');\n\n";
+          if(!css.includes("ravan-dark-v19.css")) css=imp+css;
+          fs.writeFileSync('ravan-scroll-shell-v19.css',css);
+          let index=fs.readFileSync('index.html','utf8');
+          index=index.replace('ravan-scroll-shell-v19.css?v=19.24','ravan-scroll-shell-v19.css?v=19.30');
+          fs.writeFileSync('index.html',index);
+          NODE
+      - run: python -m pip install -q selenium
+      - name: Verify dark theme in Chrome
+        shell: bash
+        run: |
+          python -m http.server 8765 >/tmp/ravan-http.log 2>&1 &
+          sleep 2
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.support.ui import WebDriverWait
+          import json,sys,time,re
+          o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1650,930')
+          d=webdriver.Chrome(options=o);fail=[]
+          def js(code,*args): return d.execute_script(code,*args)
+          def check(c,m):
+            if not c: fail.append(m)
+          def rgb(s):
+            m=re.search(r'rgba?\((\d+),\s*(\d+),\s*(\d+)',s or '')
+            return tuple(map(int,m.groups())) if m else None
+          def darkish(s):
+            c=rgb(s); return bool(c and max(c)<120 and sum(c)<260)
+          try:
+            d.get('http://127.0.0.1:8765/?dark-check=19.30')
+            WebDriverWait(d,15).until(lambda x:x.find_elements('css selector','.r19-app'))
+            js("localStorage.setItem('ravan_theme','dark');location.reload()")
+            WebDriverWait(d,15).until(lambda x:x.execute_script("return document.documentElement.classList.contains('r19-dark')&&!!document.querySelector('.r19-app')"))
+            WebDriverWait(d,5).until(lambda x:len(x.find_elements('css selector','.r19-navitem'))>=6)
+            js("document.querySelectorAll('.r19-navitem')[5].click()")
+            WebDriverWait(d,8).until(lambda x:x.find_elements('css selector','.r19-settings-card'))
+            sels=['body','.r19-app','.r19-topbar','.r19-brand','.r19-nav','.r19-context','.r11-body','.r19-settings-card']
+            colors={}
+            for s in sels:
+              val=js("const e=document.querySelector(arguments[0]);return e?getComputedStyle(e).backgroundColor:null",s)
+              colors[s]=val
+              check(val is not None,f'{s} missing')
+              check(darkish(val),f'{s} not dark: {val}')
+            print('DARK_COLORS',json.dumps(colors,ensure_ascii=False))
+            check(js("return localStorage.getItem('ravan_theme')")== 'dark','dark preference not persisted')
+            # Settings theme toggle must still be operable and return to light.
+            js("[...document.querySelectorAll('[data-pref=theme]')].find(x=>x.dataset.value==='light').click()")
+            time.sleep(.25)
+            check(not js("return document.documentElement.classList.contains('r19-dark')"),'light toggle did not remove dark class')
+            check(js("return localStorage.getItem('ravan_theme')")== 'light','light preference not persisted')
+            if fail:
+              print('ASSERT_FAIL',json.dumps(fail,ensure_ascii=False));sys.exit(1)
+            print('ASSERT_PASS full-shell dark theme')
+          finally:
+            d.quit()
+          PY
+      - name: Commit dark theme wiring
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html ravan-scroll-shell-v19.css
+          git commit -m "Apply dark theme across full RAVAN shell"
+          git push
